@@ -4,6 +4,22 @@
 
 This guide shows you how to test the Frisbii Payment Plugin in your local Medusa backend **before** publishing to npm.
 
+## 🚀 Quick Reference: Making Changes
+
+After initial npm link setup, **every time you edit plugin code**:
+
+```powershell
+# In plugin directory
+cd D:\my_cource\medusa\001\medusa-plugin-frisbii-pay
+npm run build           # ⚠️ REQUIRED after every code change
+
+# In backend directory
+cd D:\my_cource\medusa\001\backend
+npm run dev             # ⚠️ REQUIRED to reload (Ctrl+C first to stop)
+```
+
+**Note**: You do NOT need to run `npm link` again. The symlink persists.
+
 ## Why Use npm link?
 
 - ✅ Test changes instantly without publishing
@@ -325,26 +341,42 @@ Invoke-RestMethod -Uri "http://localhost:8000/store/frisbii/config" -Method GET
 
 ### Workflow for Development
 
-```powershell
-# 1. Make changes to plugin code
-cd D:\my_cource\medusa\001\medusa-plugin-frisbii-pay
-# Edit files in src/
+**Important**: After npm link, you DON'T need to run `npm link` again. The symlink persists across edits.
 
-# 2. Rebuild plugin
+**Every time you edit plugin code, do this:**
+
+```powershell
+# 1. Edit plugin code
+cd D:\my_cource\medusa\001\medusa-plugin-frisbii-pay
+# Make your changes in src/
+
+# 2. ⚠️ REQUIRED: Rebuild plugin
 npm run build
 
-# 3. Restart backend (changes are automatically picked up)
+# Expected output:
+# ✓ Plugin build completed successfully (3-4s)
+
+# 3. ⚠️ REQUIRED: Restart backend
 cd D:\my_cource\medusa\001\backend
-# Press Ctrl+C to stop
+# Press Ctrl+C to stop backend
 npm run dev
 
 # 4. Test your changes
-# Use curl, Postman, or browser
+# Backend now uses updated plugin code
 ```
+
+**Why rebuild?**
+- npm link creates a **symlink** (folder pointer), so backend always sees your local plugin
+- But backend uses **compiled files** in `.medusa/server/`, not source `src/` files
+- Therefore: **Edit → Build → Restart** every time
+
+**What if I forget to rebuild?**
+- Backend won't see your changes (still using old compiled code)
+- No error messages - just outdated behavior
 
 **Hot Reload (Optional):**
 
-For faster development, you can use `nodemon` to auto-restart:
+For faster development, you can use `nodemon` to auto-restart backend when plugin rebuilds:
 
 ```powershell
 # In backend directory
@@ -353,8 +385,16 @@ npm install -D nodemon
 # Update package.json:
 # "dev": "nodemon --watch ../medusa-plugin-frisbii-pay/.medusa --exec 'medusa develop'"
 
-# Now backend auto-restarts when plugin rebuilds
+# Now:
+# 1. Edit plugin code
+# 2. Run: npm run build (in plugin directory)
+# 3. Backend auto-restarts (no manual restart needed) ✅
 ```
+
+**Trade-off:**
+- ✅ Faster: No need to manually stop/start backend
+- ❌ Still need to rebuild plugin manually (TypeScript → JavaScript)
+- ⚠️ Backend restarts automatically when `.medusa/` changes detected
 
 ## Troubleshooting
 
@@ -376,13 +416,17 @@ npm link @montaekung/medusa-plugin-frisbii-pay
 
 ### Issue: Changes not reflected
 
+**Problem**: Modified plugin code but backend still shows old behavior
+
+**Cause**: Forgot to rebuild plugin after editing
+
 **Solution:**
 ```powershell
 # 1. Rebuild plugin
 cd D:\my_cource\medusa\001\medusa-plugin-frisbii-pay
 npm run build
 
-# 2. Clear backend build
+# 2. Clear backend build (optional, if still not working)
 cd D:\my_cource\medusa\001\backend
 Remove-Item -Recurse -Force .medusa
 
@@ -390,6 +434,10 @@ Remove-Item -Recurse -Force .medusa
 npm run build
 npm run dev
 ```
+
+**Remember**: 
+- ✅ Edit code → **Always rebuild plugin** → Restart backend
+- ❌ npm link does NOT auto-compile TypeScript to JavaScript
 
 ### Issue: Database tables not created
 
@@ -467,6 +515,33 @@ Before moving to production:
 - [ ] Test payment completes successfully
 - [ ] Database tables populated correctly
 - [ ] No errors in logs
+
+## Command Reference
+
+### One-Time Setup (Run Once)
+
+| Step | Command | Directory | Purpose |
+|------|---------|-----------|---------|
+| Build plugin | `npm run build` | Plugin | Compile TypeScript |
+| Create link | `npm link` | Plugin | Create global symlink |
+| Link in backend | `npm link @montaekung/medusa-plugin-frisbii-pay` | Backend | Use local plugin |
+| Run migrations | `npx medusa migrations run` | Backend | Create database tables |
+
+### Daily Development (Every Code Change)
+
+| Step | Command | Directory | Required? | Purpose |
+|------|---------|-----------|-----------|---------|
+| Edit code | - | Plugin | - | Make changes in `src/` |
+| **Build plugin** | **`npm run build`** | **Plugin** | **✅ YES** | **Compile TypeScript** |
+| **Restart backend** | **`npm run dev`** | **Backend** | **✅ YES** | **Load new code** |
+| Test | API calls | - | - | Verify changes work |
+
+### Cleanup (When Done Testing)
+
+| Step | Command | Directory | Purpose |
+|------|---------|-----------|---------|
+| Unlink backend | `npm unlink @montaekung/medusa-plugin-frisbii-pay` | Backend | Remove symlink |
+| Install from npm | `npm install @montaekung/medusa-plugin-frisbii-pay@version` | Backend | Use published package |
 
 ## Next Steps
 
