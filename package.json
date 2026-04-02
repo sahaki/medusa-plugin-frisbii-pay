@@ -1,0 +1,56 @@
+{
+  "name": "@montaekung/medusa-plugin-frisbii-pay",
+  "version": "0.1.0-beta.1",
+  "description": "Frisbii/Reepay payment provider for Medusa v2",
+  "author": "Montaekung",
+  "license": "MIT",
+  "main": ".medusa/server",
+  "types": ".medusa/server/src/index.d.ts",
+  "files": [
+    ".medusa/server"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./providers/*": "./.medusa/server/src/providers/*/index.js",
+    "./workflows": "./.medusa/server/src/workflows/index.js",
+    ".": "./.medusa/server/index.js"
+  },
+  "scripts": {
+    "build": "medusa plugin:build",
+    "watch": "medusa plugin:watch",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "@medusajs/framework": "^2.13.0",
+    "@medusajs/medusa": "^2.13.0",
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@medusajs/framework": "^2.13.0",
+    "@medusajs/medusa": "^2.13.0",
+    "typescript": "^5.3.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0"
+  },
+  "keywords": [
+    "medusa",
+    "medusa-plugin",
+    "medusa-plugin-payment",
+    "frisbii",
+    "reepay",
+    "payment",
+    "payment-gateway"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sahaki/medusa-plugin-frisbii-pay.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sahaki/medusa-plugin-frisbii-pay/issues"
+  },
+  "homepage": "https://github.com/sahaki/medusa-plugin-frisbii-pay#readme",
+  "engines": {
+    "node": ">=20"
+  }
+}
