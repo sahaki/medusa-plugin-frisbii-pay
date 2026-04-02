@@ -51,7 +51,12 @@ src/
   jobs/                        # Scheduled jobs (frisbii-*.ts)
   types/                       # Shared TypeScript types
   utils/                       # Pure utility functions
-  admin/widgets/               # React admin widget components
+  admin/
+    widgets/                   # React admin widgets (order detail page)
+    routes/
+      settings/
+        frisbii/
+          page.tsx             # Admin settings page (/settings/frisbii)
 ```
 
 ---
@@ -180,12 +185,19 @@ export default async function handler({ container }) { ... }
 
 ---
 
-## Admin Widget (`src/admin/widgets/`)
+## Admin UI (`src/admin/`)
 
+### Widgets (`src/admin/widgets/`)
 - Written as React functional components using hooks.
-- Uses Medusa Admin UI component library (if available) for consistent styling.
-- Widget file exports a `config` object and a default React component.
-- Should display payment status and allow triggering refunds/cancellations from the order detail page.
+- Uses `@medusajs/ui`, `@medusajs/icons`, `@medusajs/admin-sdk` packages (all peerDependencies).
+- Widget file exports a `config` object via `defineWidgetConfig()` and a default React component.
+- Should display payment status on the order detail page.
+
+### Settings Page (`src/admin/routes/settings/frisbii/page.tsx`)
+- Exports `config` via `defineRouteConfig({ label, icon })` — this registers the menu item in the Admin sidebar under Settings.
+- Exports a default React component as the page.
+- Fetches/saves config via `/admin/frisbii/config` API route.
+- Must be placed at `src/admin/routes/settings/<slug>/page.tsx` for Medusa to discover it.
 
 ---
 
@@ -197,6 +209,7 @@ export default async function handler({ container }) { ... }
 - Do **not** use `require()` — use ES module `import/export` throughout.
 - Do **not** mutate existing migration files — always create a new one.
 - Do **not** add new peerDependencies without updating both `peerDependencies` and `devDependencies` in `package.json`.
+- Do **not** put admin UI packages (`@medusajs/admin-sdk`, `@medusajs/ui`, `@medusajs/icons`, `react`) in `dependencies` — they must be `peerDependencies` only.
 
 ---
 
@@ -208,12 +221,30 @@ Required exports:
 ```json
 "exports": {
   "./package.json": "./package.json",
-  ".": "./.medusa/server/index.js",
+  "./admin": {
+    "import": "./.medusa/server/src/admin/index.mjs",
+    "require": "./.medusa/server/src/admin/index.js",
+    "default": "./.medusa/server/src/admin/index.js"
+  },
   "./providers/*": "./.medusa/server/src/providers/*/index.js",
   "./modules/*": "./.medusa/server/src/modules/*/index.js",
   "./.medusa/server/src/modules/*": "./.medusa/server/src/modules/*/index.js",
-  "./workflows": "./.medusa/server/src/workflows/index.js"
+  "./workflows": "./.medusa/server/src/workflows/index.js",
+  ".": "./.medusa/server/index.js"
 }
 ```
 
-When adding a new module under `src/modules/`, no extra entry is needed — the wildcard patterns above already cover it.
+**Critical rules**:
+- `"./admin"` **must** use the conditional `import`/`require`/`default` object format — a plain string causes a `"default" is not exported` Rollup error during the host app's frontend build.
+- The `"./admin"` entry is required for Medusa to discover and bundle the admin settings page and widgets into the host app's Admin UI. Without it, the plugin's settings page will not appear in the sidebar.
+- When adding a new module under `src/modules/`, no extra entry needed — the wildcard patterns cover it.
+
+## Admin UI Build & Deployment Notes
+
+- The admin UI (settings page, widgets) is **not** served from the plugin directly. It is compiled into the **host application's** admin bundle.
+- After modifying any file under `src/admin/` in the plugin:
+  1. Run `npm run build` in the plugin directory.
+  2. Run `npx medusa build` in the host app (e.g. `medusa-store`) to recompile the admin bundle.
+  3. Restart the host app dev server (`npm run dev`).
+- The `npx medusa develop` command does NOT rebuild the admin bundle on the fly. Changes to admin UI always require a full `npx medusa build`.
+- **Migration command**: Use `npx medusa db:migrate` (not `npx medusa migrations run` which is a Medusa v1 command).
