@@ -21,55 +21,85 @@ npm install @montaekung/medusa-plugin-frisbii-pay
 
 ## ⚙️ Configuration
 
-Add the plugin to your `medusa-config.ts`:
+Add the plugin to your `medusa-config.js`:
 
-```typescript
-import { defineConfig } from '@medusajs/framework/utils'
+```javascript
+// medusa-config.js
 
-export default defineConfig({
-  plugins: [
-    {
-      resolve: '@montaekung/medusa-plugin-frisbii-pay',
-      options: {},
-    },
-  ],
-  modules: [
-    {
-      resolve: '@medusajs/medusa/payment',
-      options: {
-        providers: [
-          {
-            resolve: '@montaekung/medusa-plugin-frisbii-pay/providers/frisbii',
-            id: 'frisbii',
-            options: {
-              apiKeyTest: process.env.FRISBII_API_KEY_TEST,
-              apiKeyLive: process.env.FRISBII_API_KEY_LIVE,
-              apiMode: process.env.FRISBII_API_MODE || 'test',
-            },
+// 1. Register plugin for data module and API routes
+const plugins = [
+  // ... other plugins
+  {
+    resolve: "@montaekung/medusa-plugin-frisbii-pay",
+    options: {},
+  },
+];
+
+// 2. Register payment provider
+const modules = [
+  // ... other modules
+  {
+    resolve: "@medusajs/medusa/payment",
+    options: {
+      providers: [
+        {
+          resolve: "@montaekung/medusa-plugin-frisbii-pay/providers/frisbii",
+          id: "frisbii-payment",
+          options: {
+            apiKeyTest: process.env.FRISBII_API_KEY_TEST,
+            apiKeyLive: process.env.FRISBII_API_KEY_LIVE,
+            apiMode: process.env.FRISBII_API_MODE || "test",
           },
-        ],
-      },
+        },
+      ],
     },
-  ],
-})
+  },
+];
+
+module.exports = {
+  projectConfig: {
+    // ... your config
+    plugins,
+  },
+  modules,
+};
 ```
+
+> **Why separate registration?**
+> - **Plugin** (`plugins` array): Registers data module, API routes, workflows
+> - **Provider** (`modules` array): Registers payment provider for checkout
+> - This follows Medusa v2 best practices (similar to Stripe, PayPal, Adyen plugins)
 
 ## 🔐 Environment Variables
 
 Create a `.env` file:
 
 ```bash
+# Reepay API Keys
 FRISBII_API_KEY_TEST=priv_test_xxxxxxxxxxxxxxxx
 FRISBII_API_KEY_LIVE=priv_xxxxxxxxxxxxxxxx
+
+# API Mode (test or live)
 FRISBII_API_MODE=test
 ```
 
 ## 📖 Documentation
 
-- [Installation Guide](./docs/installation.md)
-- [Configuration Reference](./docs/configuration.md)
-- [API Documentation](./docs/api-reference.md)
-- [Troubleshooting](./docs/troubleshooting.md)
+- **[Configuration Example](./docs/MEDUSA_CONFIG_EXAMPLE.md)** ⭐ - Complete config guide
+- [Installation Guide](./docs/INSTALLATION.md) - Setup instructions
+- [Configuration Reference](./docs/CONFIGURATION.md) - All options
+- [API Documentation](./docs/API_REFERENCE.md) - Endpoints & types
+- [Testing Guide](./docs/TESTING.md) - Unit & integration tests
+- [NPM Link Testing](./docs/NPM_LINK_TESTING.md) - Local development
+- [Troubleshooting](./docs/TROUBLESHOOTING.md) - Common issues
+
+## 🏗️ Architecture
+
+See [Architecture Guide](./docs/ARCHITECTURE.md) for detailed information about:
+- System components
+- Data models
+- Payment flow
+- Workflows & events
 
 ## 🛠️ Development
 
