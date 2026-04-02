@@ -197,3 +197,23 @@ export default async function handler({ container }) { ... }
 - Do **not** use `require()` — use ES module `import/export` throughout.
 - Do **not** mutate existing migration files — always create a new one.
 - Do **not** add new peerDependencies without updating both `peerDependencies` and `devDependencies` in `package.json`.
+
+---
+
+## `package.json` exports — Required Entries
+
+The `exports` field **must** include entries for every path that Medusa resolves at runtime. Missing entries cause `Package subpath '...' is not defined by "exports"` errors on startup.
+
+Required exports:
+```json
+"exports": {
+  "./package.json": "./package.json",
+  ".": "./.medusa/server/index.js",
+  "./providers/*": "./.medusa/server/src/providers/*/index.js",
+  "./modules/*": "./.medusa/server/src/modules/*/index.js",
+  "./.medusa/server/src/modules/*": "./.medusa/server/src/modules/*/index.js",
+  "./workflows": "./.medusa/server/src/workflows/index.js"
+}
+```
+
+When adding a new module under `src/modules/`, no extra entry is needed — the wildcard patterns above already cover it.
