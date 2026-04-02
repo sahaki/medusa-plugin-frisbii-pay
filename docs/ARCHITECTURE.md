@@ -303,15 +303,35 @@ Respond 200 OK
 - Idempotent: Same event processed multiple times is safe
 - Async: Events processed asynchronously via job queue
 
-### 8. Admin Widget (`src/admin/widgets/`)
+### 8. Admin UI (`src/admin/`)
 
-**frisbii-order-payment.tsx**:
-React component for Medusa admin dashboard.
+**Admin Widgets (`src/admin/widgets/`)**:
 
-- Displays order payment status
-- Shows transaction history
-- Allows manual payment actions (future)
-- Uses Medusa admin SDK
+- **frisbii-order-payment.tsx**: React widget displayed on order detail page
+  - Shows payment status, masked card info, transaction history
+  - Uses `defineWidgetConfig()` to register with Medusa Admin SDK
+  - Fetches data from `/admin/frisbii/payment-status/:orderId`
+
+**Admin Settings Page (`src/admin/routes/settings/frisbii/page.tsx`)**:
+
+React component that provides a full configuration UI in the Admin sidebar under **Settings → Frisbii Pay**.
+
+- Powered by `defineRouteConfig({ label: "Frisbii Pay", icon: CreditCard })`
+- Allows store admins to:
+  - Configure Reepay API keys (test/live)
+  - Set webhook secret
+  - Enable/disable payment provider
+  - Configure payment display options (embedded/overlay/redirect)
+  - Set locale and checkout configuration
+  - Toggle auto-capture, auto-create invoice, saved cards
+  - Select allowed payment methods (card, MobilePay, Apple Pay, etc.)
+  - Test API connection
+- Saves configuration to `frisbii_config` table via `/admin/frisbii/config` endpoint
+
+**Build & Discovery**:
+- Admin UI code is compiled by `medusa plugin:build` into `.medusa/server/src/admin/index.js` (CommonJS) and `index.mjs` (ESM)
+- The `"./admin"` export in `package.json` points to these compiled bundles
+- Medusa's build process (`npx medusa build`) discovers the plugin's admin UI via the `./admin` export, bundles it into the host app's admin client, and serves it from `/app/settings/frisbii`
 
 ## Data Flow Examples
 

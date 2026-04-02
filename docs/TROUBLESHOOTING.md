@@ -95,12 +95,12 @@ This guide helps you solve common problems with the Frisbii Payment Plugin.
 
 2. Run migrations explicitly:
    ```bash
-   npx medusa migrations run --verbose
+   npx medusa db:migrate
    ```
 
 3. Check migration files exist:
    ```bash
-   ls node_modules/@montaekung/medusa-plugin-frisbii-pay/.medusa/server/migrations/
+   ls node_modules/@montaekung/medusa-plugin-frisbii-pay/.medusa/server/src/modules/frisbii-data/migrations/
    ```
 
 4. Manual fix (if needed):
@@ -109,6 +109,95 @@ This guide helps you solve common problems with the Frisbii Payment Plugin.
    SELECT table_name FROM information_schema.tables 
    WHERE table_name LIKE 'frisbii_%';
    ```
+
+### Admin settings page not appearing
+
+**Problem**: "Frisbii Pay" menu item missing from Settings sidebar
+
+**Root Cause**: The admin UI is bundled into the host app during build, not served live from the plugin.
+
+**Solutions**:
+1. Verify `package.json` exports include `./admin`:
+   ```json
+   "exports": {
+     "./admin": {
+       "import": "./.medusa/server/src/admin/index.mjs",
+       "require": "./.medusa/server/src/admin/index.js",
+       "default": "./.medusa/server/src/admin/index.js"
+     }
+   }
+   ```
+
+2. Rebuild the backend's admin client:
+   ```bash
+   cd /path/to/backend
+   npx medusa build  # NOT just npm run dev!
+   ```
+
+3. Verify admin bundle includes the plugin:
+   ```bash
+   # Check if entry.jsx references the plugin
+   grep -i "frisbii" .medusa/client/entry.jsx
+   
+   # Should show:
+   # import plugin1 from "@montaekung/medusa-plugin-frisbii-pay/admin"
+   ```
+
+4. Clear browser cache and reload admin UI
+
+**Common mistake**: Running `npm run dev` does NOT rebuild the admin client — you must run `npx medusa build` after any admin UI changes.
+
+### "Package subpath '...' is not defined by exports"
+
+**Problem**: Error starting backend or building admin
+
+**Example errors**:
+```
+Package subpath './.medusa/server/src/modules/frisbii-data' is not defined by "exports"
+```
+
+**Cause**: `package.json` `exports` field is missing required entries
+
+**Solution**: Update plugin's `package.json`:
+```json
+"exports": {
+  "./package.json": "./package.json",
+  "./admin": {
+    "import": "./.medusa/server/src/admin/index.mjs",
+    "require": "./.medusa/server/src/admin/index.js",
+    "default": "./.medusa/server/src/admin/index.js"
+  },
+  "./providers/*": "./.medusa/server/src/providers/*/index.js",
+  "./modules/*": "./.medusa/server/src/modules/*/index.js",
+  "./.medusa/server/src/modules/*": "./.medusa/server/src/modules/*/index.js",
+  "./workflows": "./.medusa/server/src/workflows/index.js",
+  ".": "./.medusa/server/index.js"
+}
+```
+
+### Build error: "default is not exported by ..."
+
+**Problem**: Admin build fails with Rollup error
+
+**Example**:
+```
+"default" is not exported by "../../plugin/.medusa/server/src/admin/index.js"
+```
+
+**Cause**: The `./admin` export points to wrong file or uses wrong format
+
+**Solution**: 
+1. Use the conditional export format (not a plain string):
+   ```json
+   "./admin": {
+     "import": "./.medusa/server/src/admin/index.mjs",
+     "require": "./.medusa/server/src/admin/index.js",
+     "default": "./.medusa/server/src/admin/index.js"
+   }
+   ```
+
+2. Rebuild plugin: `npm run build`
+3. Rebuild backend: `npx medusa build`
 
 ---
 

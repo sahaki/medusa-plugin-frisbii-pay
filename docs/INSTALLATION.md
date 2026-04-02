@@ -79,8 +79,7 @@ FRISBII_API_MODE=test
 The plugin includes database migrations for required tables. Run migrations with:
 
 ```bash
-npm run build
-npx medusa migrations run
+npx medusa db:migrate
 ```
 
 This creates the following tables:
@@ -89,15 +88,22 @@ This creates the following tables:
 - `frisbii_customer` - Customer-to-Reepay ID mapping
 - `frisbii_payment_status` - Payment transaction history
 
-### 5. Build Your Backend
+### 5. Build Your Backend and Admin UI
+
+**Important**: The admin settings page is bundled into your backend's admin client during the build process.
 
 ```bash
-npm run build
+npx medusa build
 ```
 
-Verify the build completes successfully. You should see:
+This compiles:
+- Backend source code
+- Admin UI (including the Frisbii settings page)
+
+You should see:
 ```
-Plugin build completed successfully
+Backend build completed successfully
+Frontend build completed successfully
 ```
 
 ### 6. Start Your Backend
@@ -110,9 +116,25 @@ The backend will start and load the Frisbii payment plugin. You can verify it lo
 
 ```bash
 # Watch for messages like:
-# [frisbii-payment] Loading Frisbii Payment Plugin
-# [frisbii-data] Initializing Frisbii Data Module
+# Server is ready on port: 9000
+# info: Admin URL → http://localhost:9000/app
 ```
+
+### 7. Access Admin Settings
+
+1. Open your browser to `http://localhost:9000/app`
+2. Log in to the Medusa admin
+3. Go to **Settings** (sidebar)
+4. Click **Frisbii Pay** 
+5. Configure your Reepay API credentials
+
+The settings page allows you to:
+- Enter test/live API keys
+- Set API mode (test/live)
+- Configure webhook secret
+- Test API connection
+- Enable/disable the payment provider
+- Customize payment display options
 
 ## Verification
 

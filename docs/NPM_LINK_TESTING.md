@@ -195,20 +195,27 @@ Remove-Item -Force jobs\frisbii-*.ts -ErrorAction SilentlyContinue
 
 ### Step 6: Rebuild Backend
 
+**Important**: This step compiles both the backend code AND the admin UI (which includes the Frisbii settings page).
+
 ```powershell
 # In backend directory
 cd D:\my_cource\medusa\001\backend
 
-# Clean build artifacts
+# Clean old build artifacts
 Remove-Item -Recurse -Force .medusa -ErrorAction SilentlyContinue
 
-# Rebuild
-npm run build
+# Full rebuild (backend + admin client)
+npx medusa build
 
 # Expected output:
 # ✓ Backend build completed successfully
-# Look for: "Loading plugin: @montaekung/medusa-plugin-frisbii-pay"
+# ✓ Frontend build completed successfully
 ```
+
+**Why full build is required**:
+- The admin settings page (`src/admin/routes/settings/frisbii/page.tsx`) is bundled into the host app's admin client
+- `npx medusa build` discovers the plugin's `./admin` export and includes it in the bundle
+- Without this, the "Frisbii Pay" menu item will not appear in the admin sidebar
 
 ### Step 7: Run Database Migrations
 
@@ -216,12 +223,16 @@ The plugin includes database migrations for required tables:
 
 ```powershell
 # Run migrations
-npx medusa migrations run
+npx medusa db:migrate
 
 # Expected output:
 # Running migrations...
-# ✓ Migration20260330075346 (Create frisbii tables)
-# ✓ All migrations completed
+# MODULE: frisbiiData
+#   ● Migrating Migration20260319000000
+#   ✔ Migrated Migration20260319000000
+#   ● Migrating Migration20260330075346
+#   ✔ Migrated Migration20260330075346
+# Completed successfully
 ```
 
 **Verify tables were created:**
@@ -247,18 +258,14 @@ psql -U user -d medusa
 npm run dev
 
 # Expected output:
-# info: Starting Medusa...
-# info: Loading plugin: @montaekung/medusa-plugin-frisbii-pay
-# info: [frisbii-payment] Loading Frisbii Payment Plugin
-# info: [frisbii-data] Initializing Frisbii Data Module
-# info: Server is running on port 9000
+# info: Server is ready on port: 9000
+# info: Admin URL → http://localhost:9000/app
 ```
 
-**Watch for these log messages:**
-- ✅ Plugin loaded successfully
-- ✅ Routes registered (admin, store, webhooks)
-- ✅ Database connection established
-- ✅ No errors during startup
+**Verify plugin loaded**:
+- No errors mentioning "frisbii" in logs
+- Admin UI accessible at `http://localhost:9000/app`
+- Settings → Frisbii Pay menu item appears in sidebar
 
 ### Step 9: Test the Plugin
 
@@ -343,7 +350,9 @@ Invoke-RestMethod -Uri "http://localhost:8000/store/frisbii/config" -Method GET
 
 **Important**: After npm link, you DON'T need to run `npm link` again. The symlink persists across edits.
 
-**Every time you edit plugin code, do this:**
+**Every time you edit plugin code:**
+
+#### For Backend Changes (API routes, providers, workflows, etc.)
 
 ```powershell
 # 1. Edit plugin code
@@ -359,6 +368,30 @@ npm run build
 # 3. ⚠️ REQUIRED: Restart backend
 cd D:\my_cource\medusa\001\backend
 # Press Ctrl+C to stop backend
+npm run dev
+```
+
+#### For Admin UI Changes (settings page, widgets)
+
+When you modify files under `src/admin/`, you need an **additional step**:
+
+```powershell
+# 1. Edit admin code
+cd D:\my_cource\medusa\001\medusa-plugin-frisbii-pay
+# Edit src/admin/routes/settings/frisbii/page.tsx or widgets
+
+# 2. ⚠️ REQUIRED: Rebuild plugin
+npm run build
+
+# 3. ⚠️ REQUIRED: Rebuild backend's admin client
+cd D:\my_cource\medusa\001\backend
+npx medusa build  # NOT just npm run dev!
+
+# Expected output:
+# ✓ Backend build completed successfully
+# ✓ Frontend build completed successfully
+
+# 4. ⚠️ REQUIRED: Restart backend
 npm run dev
 
 # 4. Test your changes
