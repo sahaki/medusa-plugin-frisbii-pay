@@ -32,16 +32,15 @@ Add the plugin to your `medusa-config.js`:
 
 ```javascript
 // Register plugin for data module, API routes, and workflows
-const plugins = [
+plugins = [
   // ... other plugins
   {
     resolve: "@montaekung/medusa-plugin-frisbii-pay",
     options: {},  // Plugin-level options (if needed)
   },
-];
-
+],
 // Register payment provider
-const modules = [
+modules = [
   // ... other modules
   {
     resolve: "@medusajs/medusa/payment",
@@ -59,15 +58,7 @@ const modules = [
       ],
     },
   },
-];
-
-module.exports = {
-  projectConfig: {
-    // ... your existing config
-    plugins,
-  },
-  modules,
-};
+]
 ```
 
 ### 3. Set Environment Variables
