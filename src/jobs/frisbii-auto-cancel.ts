@@ -1,4 +1,4 @@
-import { MedusaContainer } from "@medusajs/framework/types"
+import type { MedusaContainer } from "@medusajs/types"
 
 const FRISBII_DATA_MODULE = "frisbiiData"
 

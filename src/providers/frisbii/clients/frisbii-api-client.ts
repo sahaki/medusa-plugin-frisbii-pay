@@ -1,4 +1,4 @@
-import { Logger } from "@medusajs/framework/types"
+import type { Logger } from "@medusajs/types"
 
 export interface FrisbiiApiError {
   http_status: number
@@ -129,7 +129,7 @@ export class FrisbiiApiClient {
         let apiError: FrisbiiApiError
 
         try {
-          const errorBody = await response.json()
+          const errorBody = await response.json() as any
           apiError = {
             http_status: response.status,
             http_reason: response.statusText,

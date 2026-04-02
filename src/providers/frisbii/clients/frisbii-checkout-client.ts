@@ -1,4 +1,4 @@
-import { Logger } from "@medusajs/framework/types"
+import type { Logger } from "@medusajs/types"
 import { FrisbiiApiClient } from "./frisbii-api-client"
 
 export class FrisbiiCheckoutClient extends FrisbiiApiClient {

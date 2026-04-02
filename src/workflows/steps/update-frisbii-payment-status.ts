@@ -19,7 +19,7 @@ export const createFrisbiiPaymentStatusStep = createStep(
     const status = await frisbiiData.createFrisbiiPaymentStatuses(input)
     return new StepResponse(status, status.id)
   },
-  async (statusId: string, { container }) => {
+  async (statusId: string | undefined, { container }) => {
     if (!statusId) return
     const frisbiiData = container.resolve(FRISBII_DATA_MODULE) as any
     await frisbiiData.deleteFrisbiiPaymentStatuses(statusId)

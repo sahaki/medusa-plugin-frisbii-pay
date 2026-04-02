@@ -6,8 +6,8 @@ export * from './config'
 
 // Re-export module types
 export type {
-  FrisbiiConfig,
-  FrisbiiSession,
-  FrisbiiCustomer,
-  FrisbiiPaymentStatus,
+  FrisbiiConfigDTO as FrisbiiConfig,
+  FrisbiiSessionDTO as FrisbiiSession,
+  FrisbiiCustomerDTO as FrisbiiCustomer,
+  FrisbiiPaymentStatusDTO as FrisbiiPaymentStatus,
 } from '../modules/frisbii-data/types'

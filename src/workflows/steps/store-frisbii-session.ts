@@ -16,7 +16,7 @@ export const storeFrisbiiSessionStep = createStep(
     const session = await frisbiiData.createFrisbiiSessions(input)
     return new StepResponse(session, session.id)
   },
-  async (sessionId: string, { container }) => {
+  async (sessionId: string | undefined, { container }) => {
     if (!sessionId) return
     const frisbiiData = container.resolve(FRISBII_DATA_MODULE) as any
     await frisbiiData.deleteFrisbiiSessions(sessionId)

@@ -31,8 +31,8 @@ import {
   UpdatePaymentInput,
   UpdatePaymentOutput,
   WebhookActionResult,
-} from "@medusajs/framework/types"
-import { Logger } from "@medusajs/framework/types"
+  Logger,
+} from "@medusajs/types"
 import { FrisbiiApiClient, FrisbiiCheckoutClient } from "./clients"
 
 type Options = {

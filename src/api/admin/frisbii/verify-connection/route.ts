@@ -42,7 +42,7 @@ export const POST = async (
     if (response.ok) {
       res.json({ success: true, message: "Connection successful" })
     } else {
-      const errorBody = await response.json().catch(() => ({}))
+      const errorBody = await response.json().catch(() => ({})) as any
       res.json({
         success: false,
         message: errorBody.message || errorBody.error || `API returned ${response.status}`,

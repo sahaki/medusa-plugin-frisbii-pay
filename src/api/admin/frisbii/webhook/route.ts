@@ -1,5 +1,5 @@
 import type { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework"
-import { FrisbiiApiClient } from "../../../../modules/frisbii-payment/clients"
+import { FrisbiiApiClient } from "../../../../providers/frisbii/clients"
 
 const FRISBII_DATA_MODULE = "frisbiiData"
 

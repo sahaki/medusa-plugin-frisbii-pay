@@ -1,4 +1,4 @@
-import { LoaderOptions } from "@medusajs/framework/types"
+import type { LoaderOptions } from "@medusajs/types"
 
 export default async function frisbiiDataLoader({
   container,
