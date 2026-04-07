@@ -27,17 +27,15 @@ Add the plugin to your `medusa-config.js`:
 // medusa-config.js
 
 // 1. Register plugin for data module and API routes
-const plugins = [
-  // ... other plugins
+plugins: [
   {
-    resolve: "@montaekung/medusa-plugin-frisbii-pay",
+    resolve: '@montaekung/medusa-plugin-frisbii-pay',
     options: {},
   },
-];
-
+],
+  
 // 2. Register payment provider
-const modules = [
-  // ... other modules
+modules: [
   {
     resolve: "@medusajs/medusa/payment",
     options: {
@@ -54,15 +52,7 @@ const modules = [
       ],
     },
   },
-];
-
-module.exports = {
-  projectConfig: {
-    // ... your config
-    plugins,
-  },
-  modules,
-};
+],
 ```
 
 > **Why separate registration?**
