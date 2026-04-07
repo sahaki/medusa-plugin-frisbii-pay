@@ -196,7 +196,7 @@ const FrisbiiSettingsPage = () => {
               type="password"
               value={config.api_key_test}
               onChange={(e) => updateField("api_key_test", e.target.value)}
-              placeholder="priv_test_xxxxxxxxxxxxxxxx"
+              placeholder="priv_xxxxxxxxxxxxxxxx"
             />
           </div>
           <div>
