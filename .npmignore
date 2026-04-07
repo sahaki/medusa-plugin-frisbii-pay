@@ -10,3 +10,4 @@ integration-tests/
 docs/
 .git/
 .gitignore
+debug/
