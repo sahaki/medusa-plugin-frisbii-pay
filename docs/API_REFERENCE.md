@@ -158,7 +158,7 @@ curl -X POST http://localhost:9000/admin/frisbii/verify-connection \
 
 #### GET /admin/frisbii/payment-status/:orderId
 
-Get payment status for an order.
+Get live payment status for an order. The route looks up the `charge_handle` from `frisbii_session`, then fetches live invoice data from the Reepay `/v1/invoice/{handle}` endpoint. Falls back to DB-stored values if the Reepay API is unavailable.
 
 **Authentication**: Required (Admin Token)
 
@@ -168,18 +168,37 @@ Get payment status for an order.
 **Response**:
 ```typescript
 {
-  orderId: string;
-  status: "pending" | "authorized" | "captured" | "failed" | "refunded";
-  amount: number;
-  currency: string;
-  transactions: Array<{
-    id: string;
-    type: "authorization" | "capture" | "refund";
-    amount: number;
-    status: "success" | "failed";
-    createdAt: Date;
-  }>;
-  lastUpdate: Date;
+  payment_status: {
+    id: string | null;
+    order_id: string;
+    charge_handle: string | null;       // Reepay charge/invoice handle
+    status: "pending" | "authorized" | "settled" | "refunded" | "cancelled" | "failed";
+    currency: string;                   // ISO code e.g. "EUR"
+    authorized_amount: number;          // Minor units (cents)
+    settled_amount: number;             // Minor units (cents)
+    refunded_amount: number;            // Minor units (cents)
+    amount: number;                     // Total order amount in minor units
+    card_type: string | null;           // e.g. "visa", "mastercard"
+    masked_card: string | null;         // e.g. "411111XXXXXX1111"
+    payment_method_type: string | null; // e.g. "card_token"
+    surcharge_fee: number | null;
+    error: string | null;
+    error_state: string | null;
+    transactions: Array<{
+      id: string;
+      type: "authorize" | "settle" | "refund" | "cancel";
+      amount: number;                   // Minor units
+      currency: string;
+      created: string;                  // ISO 8601
+      settled: string | null;
+      state: string;                    // "completed" | "failed" etc.
+      payment_type: string | null;
+      card_transaction: {
+        card_type?: string;
+        masked_card?: string;
+      } | null;
+    }> | null;
+  } | null;
 }
 ```
 
@@ -192,29 +211,55 @@ curl -X GET http://localhost:9000/admin/frisbii/payment-status/order_abc123 \
 **Response**:
 ```json
 {
-  "orderId": "order_abc123",
-  "status": "captured",
-  "amount": 10000,
-  "currency": "USD",
-  "transactions": [
-    {
-      "id": "txn_123",
-      "type": "authorization",
-      "amount": 10000,
-      "status": "success",
-      "createdAt": "2026-04-02T10:00:00.000Z"
-    },
-    {
-      "id": "txn_124",
-      "type": "capture",
-      "amount": 10000,
-      "status": "success",
-      "createdAt": "2026-04-02T10:05:00.000Z"
-    }
-  ],
-  "lastUpdate": "2026-04-02T10:05:00.000Z"
+  "payment_status": {
+    "order_id": "order_abc123",
+    "charge_handle": "cart-1775623306319",
+    "status": "settled",
+    "currency": "EUR",
+    "authorized_amount": 2000,
+    "settled_amount": 2000,
+    "refunded_amount": 0,
+    "amount": 2000,
+    "card_type": "visa",
+    "masked_card": "411111XXXXXX1111",
+    "payment_method_type": "card_token",
+    "surcharge_fee": null,
+    "error": null,
+    "error_state": null,
+    "transactions": [
+      {
+        "id": "to_xxx",
+        "type": "authorize",
+        "amount": 2000,
+        "currency": "EUR",
+        "created": "2026-04-08T11:39:18.000Z",
+        "settled": null,
+        "state": "completed",
+        "payment_type": null,
+        "card_transaction": {
+          "card_type": "visa",
+          "masked_card": "411111XXXXXX1111"
+        }
+      },
+      {
+        "id": "to_yyy",
+        "type": "settle",
+        "amount": 2000,
+        "currency": "EUR",
+        "created": "2026-04-08T11:39:20.000Z",
+        "settled": "2026-04-08T11:39:20.000Z",
+        "state": "completed",
+        "payment_type": null,
+        "card_transaction": null
+      }
+    ]
+  }
 }
 ```
+
+> **Note**: All monetary amounts are in **minor units** (e.g. 2000 = €20.00). The admin widget divides by 100 for display (except zero-decimal currencies like JPY).
+
+> **See invoice link**: `https://admin.billwerk.plus/#/rp/payments/invoices/invoice/{charge_handle}`
 
 ### Payment Link
 

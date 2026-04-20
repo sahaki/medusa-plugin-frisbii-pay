@@ -142,16 +142,23 @@ Customer-to-Reepay mapping.
 | email | String | Customer email |
 
 #### frisbii_payment_status
-Transaction history.
+Payment status snapshot (synced via webhooks, enriched live from Reepay API).
 
 | Field | Type | Purpose |
 |-------|------|---------|
 | id | UUID (PK) | Unique identifier |
-| orderId | UUID (FK) | Order reference |
-| status | Enum | pending/authorized/captured/failed |
-| amount | Integer | Amount in cents |
-| transactions | JSON | Array of transaction objects |
-| lastUpdate | DateTime | Last status change |
+| order_id | String | Medusa order ID |
+| status | Enum | pending/authorized/settled/refunded/cancelled/failed |
+| masked_card | String? | Masked PAN e.g. `411111XXXXXX1111` |
+| card_type | String? | e.g. `visa`, `mastercard` |
+| fingerprint | String? | Reepay card fingerprint |
+| payment_method_type | String? | e.g. `card_token` |
+| surcharge_fee | Integer? | Surcharge in minor units |
+| error | String? | Error message if failed |
+| error_state | String? | Error state code |
+| transactions | JSON? | Array of Reepay transaction objects |
+
+> `authorized_amount`, `settled_amount`, `refunded_amount` and `currency` are **not stored in the DB** — they are fetched live from the Reepay `/v1/invoice/{handle}` endpoint each time the admin order page loads.
 
 **Service Interface**:
 
@@ -307,10 +314,23 @@ Respond 200 OK
 
 **Admin Widgets (`src/admin/widgets/`)**:
 
-- **frisbii-order-payment.tsx**: React widget displayed on order detail page
-  - Shows payment status, masked card info, transaction history
-  - Uses `defineWidgetConfig()` to register with Medusa Admin SDK
-  - Fetches data from `/admin/frisbii/payment-status/:orderId`
+- **frisbii-order-payment.tsx**: React widget displayed in the **right sidebar of the order detail page**, after the Customer card.
+  - Zone: `"order.details.side.after"`
+  - Fetches live payment data from `GET /admin/frisbii/payment-status/:orderId` on every page load.
+  - Displays an **Invoice card** modelled after the Reepay WooCommerce plugin:
+    - Invoice handle (Reepay charge handle)
+    - State label with colour coding (Settled = green, Authorized = orange, Cancelled/Failed = red)
+    - Payment method with card logo image + masked PAN
+    - Balance breakdown: Remaining Balance, Total Authorized, Total Settled, Total Refunded
+    - Transaction history list
+    - **See invoice** button linking to `https://admin.billwerk.plus/#/rp/payments/invoices/invoice/{handle}`
+  - Returns `null` (renders nothing) when the order has no Frisbii payment data.
+
+**Card Logo Assets (`src/admin/assets/`)**:
+
+- `card-logos.ts` — auto-generated module exporting `CARD_LOGOS: Record<string, string>` with base64 PNG data URIs for 20 card brands (Visa, Mastercard, Maestro, Amex, Dankort, Klarna, MobilePay, Vipps, etc.).
+- Images sourced from the Reepay WooCommerce gateway plugin assets.
+- PNG source files are stored at `src/admin/assets/*.png` (not tracked in npm package output).
 
 **Admin Settings Page (`src/admin/routes/settings/frisbii/page.tsx`)**:
 

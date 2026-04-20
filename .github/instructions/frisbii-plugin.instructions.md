@@ -53,6 +53,10 @@ src/
   utils/                       # Pure utility functions
   admin/
     widgets/                   # React admin widgets (order detail page)
+      frisbii-order-payment.tsx  # Invoice widget, zone: order.details.side.after
+    assets/
+      card-logos.ts            # Auto-generated base64 card logo data URIs (CARD_LOGOS map)
+      *.png                    # Source PNG files for card logos (not in npm output)
     routes/
       settings/
         frisbii/
@@ -176,12 +180,14 @@ export default async function handler({ container }) { ... }
 ## Reepay Integration Concepts
 
 - **Session handle**: Reepay checkout session ID — created when payment is initiated.
-- **Charge handle**: Reepay charge ID — assigned after customer completes payment.
+- **Charge handle**: Reepay charge ID — assigned after customer completes payment. Stored in `frisbii_session.charge_handle`.
 - **Test mode**: Uses API key prefixed with `priv_test_`. Live mode uses `priv_`.
 - **Webhook events** to handle: `invoice_authorized`, `invoice_settled`, `invoice_cancelled`, `customer_payment_method_added`.
 - Always verify webhook signatures using HMAC-SHA256 with `webhook_secret` from config.
 - Reepay API base URL: `https://api.reepay.com/v1/`
 - Reepay Checkout API base URL: `https://checkout-api.reepay.com/v1/`
+- **Invoice endpoint vs Charge endpoint**: Use `/v1/invoice/{handle}` (not `/v1/charge/{handle}`) when you need `authorized_amount`, `settled_amount`, and `refunded_amount` — the charge endpoint does not return these breakdown fields.
+- **Reepay admin dashboard URL**: `https://admin.billwerk.plus/#/rp/payments/invoices/invoice/{handle}`
 
 ---
 
@@ -191,7 +197,23 @@ export default async function handler({ container }) { ... }
 - Written as React functional components using hooks.
 - Uses `@medusajs/ui`, `@medusajs/icons`, `@medusajs/admin-sdk` packages (all peerDependencies).
 - Widget file exports a `config` object via `defineWidgetConfig()` and a default React component.
-- Should display payment status on the order detail page.
+- The **Invoice widget** (`frisbii-order-payment.tsx`) is registered in zone `"order.details.side.after"` so it appears in the right sidebar **after the Customer card**.
+
+#### Invoice Widget (`frisbii-order-payment.tsx`)
+The widget fetches live payment data from `GET /admin/frisbii/payment-status/:orderId` on mount and displays an **Invoice card** matching the Reepay/WooCommerce layout:
+
+- **Invoice handle** — Reepay charge handle (e.g. `cart-1775623306319`)
+- **State** — colour-coded status label (Settled = green, Authorized = orange, Cancelled/Failed = red)
+- **Payment method** — card logo image + masked PAN (`XXXX XXXX XXXX 1111`)
+- **Balance breakdown** — Remaining Balance, Total Authorized, Total Settled, Total Refunded
+- **See invoice** button — links to `https://admin.billwerk.plus/#/rp/payments/invoices/invoice/{handle}`
+
+The widget returns `null` (renders nothing) when no Frisbii payment data exists for the order.
+
+#### Card Logo Assets (`src/admin/assets/`)
+- `card-logos.ts` — auto-generated file exporting `CARD_LOGOS: Record<string, string>` with base64 PNG data URIs for all supported card types.
+- `CARD_TYPE_LOGO_MAP` in the widget maps Reepay `card_type` values (e.g. `"visa"`, `"mastercard"`, `"amex"`) to keys in `CARD_LOGOS`.
+- **Do not hand-edit `card-logos.ts`** — regenerate it from PNGs using the helper script when logos change.
 
 ### Settings Page (`src/admin/routes/settings/frisbii/page.tsx`)
 - Exports `config` via `defineRouteConfig({ label, icon })` — this registers the menu item in the Admin sidebar under Settings.

@@ -64,12 +64,16 @@ Once configured, Frisbii Payment is active!
 #### In Medusa Admin
 
 1. Go to **Orders → [Your Order]**
-2. Look for **Payment Information** section
-3. You'll see:
-   - Payment status (Pending, Authorized, Captured, Failed)
-   - Amount and currency
-   - Transaction history
-   - Transaction IDs
+2. Look in the **right sidebar** — the **Invoice** card appears below the Customer card
+3. The card shows:
+   - **Invoice handle** — the Reepay charge ID (e.g. `cart-1775623306319`)
+   - **State** — colour-coded: Settled (green), Authorized (orange), Cancelled/Failed (red)
+   - **Payment method** — card logo (VISA, Mastercard, etc.) with masked card number
+   - **Remaining balance, Total authorized, Total settled, Total refunded**
+   - **Transaction history** — each authorization, settlement or refund with timestamp and amount
+   - **See invoice** button — opens the invoice in the Reepay/Billwerk dashboard
+
+> **Note**: The Invoice card only appears for orders paid through Frisbii Pay. It fetches live data from Reepay each time you open the order page, so balances are always up-to-date.
 
 #### Example Payment Flow
 
