@@ -1,7 +1,8 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { Container, Heading, Text, Badge, Button } from "@medusajs/ui"
+import { ArrowPathMini } from "@medusajs/icons"
 import { DetailWidgetProps, AdminOrder } from "@medusajs/framework/types"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { CARD_LOGOS } from "../assets/card-logos"
 
 interface CardTransaction {
@@ -49,12 +50,15 @@ const STATUS_COLORS: Record<string, "green" | "orange" | "red" | "grey"> = {
   authorized: "orange",
   settled: "green",
   refunded: "grey",
+  partially_refunded: "orange",
   cancelled: "red",
   failed: "red",
   pending: "grey",
 }
 
 const TX_TYPE_LABELS: Record<string, string> = {
+  // Reepay returns "authorization"; keep "authorize" as fallback
+  authorization: "Authorization",
   authorize: "Authorization",
   settle: "Settlement",
   refund: "Refund",
@@ -62,6 +66,7 @@ const TX_TYPE_LABELS: Record<string, string> = {
 }
 
 const TX_TYPE_COLORS: Record<string, "green" | "orange" | "red" | "grey"> = {
+  authorization: "orange",
   authorize: "orange",
   settle: "green",
   refund: "grey",
@@ -151,8 +156,9 @@ function BalanceLine({
 const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshToken, setRefreshToken] = useState(0)
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     setLoading(true)
     fetch(`/admin/frisbii/payment-status/${data.id}`, { credentials: "include" })
       .then((r) => r.json())
@@ -161,11 +167,19 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
       .finally(() => setLoading(false))
   }, [data.id])
 
-  if (loading) {
+  // Re-fetch when Medusa updates the order (after Capture / Refund)
+  // data.payment_status and data.updated_at change whenever Medusa
+  // invalidates its React Query cache for this order.
+  useEffect(() => {
+    fetchData()
+  }, [fetchData, data.payment_status, data.updated_at, refreshToken])
+
+  if (loading && !paymentStatus) {
     return (
       <Container className="divide-y p-0">
         <div className="flex items-center justify-between px-6 py-4">
-          <Heading level="h2">Invoice</Heading>
+          <Heading level="h2">Frisbii Invoice</Heading>
+          <ArrowPathMini className="animate-spin text-ui-fg-muted" />
         </div>
         <div className="px-6 py-4">
           <Text className="text-ui-fg-muted">Loading…</Text>
@@ -197,16 +211,44 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
     ? `${REEPAY_INVOICE_BASE}${paymentStatus.charge_handle}`
     : null
 
+  // Use the last transaction's state as the effective display state.
+  // Reepay keeps charge.state as "settled" even after a refund;
+  // the last transaction reflects the most recent action.
+  const lastTx =
+    paymentStatus.transactions && paymentStatus.transactions.length > 0
+      ? paymentStatus.transactions[paymentStatus.transactions.length - 1]
+      : null
+  const effectiveState = lastTx?.state || paymentStatus.status
+
+  const STATUS_TEXT_COLORS: Record<string, string> = {
+    settled: "#047857",
+    authorized: "#b45309",
+    partially_refunded: "#b45309",
+    refunded: "#6b7280",
+    cancelled: "#b91c1c",
+    failed: "#b91c1c",
+  }
+
   return (
     <Container className="divide-y p-0">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4">
-        <Heading level="h2">Invoice</Heading>
-        {paymentStatus.status && (
-          <Badge color={STATUS_COLORS[paymentStatus.status] || "grey"}>
-            {paymentStatus.status.charAt(0).toUpperCase() + paymentStatus.status.slice(1)}
-          </Badge>
-        )}
+        <Heading level="h2">Frisbii Invoice</Heading>
+        <div className="flex items-center gap-2">
+          {effectiveState && (
+            <Badge color={STATUS_COLORS[effectiveState] || "grey"}>
+              {effectiveState.replace(/_/g, " ").charAt(0).toUpperCase() + effectiveState.replace(/_/g, " ").slice(1)}
+            </Badge>
+          )}
+          <button
+            onClick={() => setRefreshToken((n) => n + 1)}
+            disabled={loading}
+            title="Refresh invoice data"
+            className="text-ui-fg-muted hover:text-ui-fg-base transition-colors disabled:opacity-40"
+          >
+            <ArrowPathMini className={loading ? "animate-spin" : ""} />
+          </button>
+        </div>
       </div>
 
       <div className="px-6 py-4 flex flex-col gap-3">
@@ -227,15 +269,9 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
           </Text>
           <Text
             size="small"
-            style={{
-              color:
-                paymentStatus.status === "settled" ? "#047857"
-                : paymentStatus.status === "authorized" ? "#b45309"
-                : paymentStatus.status === "cancelled" || paymentStatus.status === "failed" ? "#b91c1c"
-                : undefined,
-            }}
+            style={{ color: STATUS_TEXT_COLORS[effectiveState] }}
           >
-            {paymentStatus.status.charAt(0).toUpperCase() + paymentStatus.status.slice(1)}
+            {effectiveState.replace(/_/g, " ").charAt(0).toUpperCase() + effectiveState.replace(/_/g, " ").slice(1)} 
           </Text>
         </div>
 
@@ -307,7 +343,8 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
                     <Badge color={TX_TYPE_COLORS[tx.type] || "grey"} size="2xsmall">
                       {TX_TYPE_LABELS[tx.type] || tx.type}
                     </Badge>
-                    {tx.state !== "completed" && (
+                    {/* Only show state badge for unexpected error states */}
+                    {tx.state === "failed" && (
                       <Badge color="red" size="2xsmall">
                         {tx.state}
                       </Badge>

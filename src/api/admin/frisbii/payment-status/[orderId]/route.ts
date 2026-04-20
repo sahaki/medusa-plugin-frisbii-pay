@@ -39,6 +39,22 @@ interface ReepayCharge {
   error_state?: string
 }
 
+/**
+ * Reepay keeps `state: "settled"` even after a full or partial refund.
+ * Derive a meaningful status from the amount breakdown instead.
+ */
+function deriveEffectiveStatus(charge: ReepayCharge): string {
+  const settled = charge.settled_amount ?? 0
+  const refunded = charge.refunded_amount ?? 0
+  if (refunded > 0 && settled > 0 && refunded >= settled) {
+    return "refunded"
+  }
+  if (refunded > 0 && refunded < settled) {
+    return "partially_refunded"
+  }
+  return charge.state
+}
+
 async function fetchLiveCharge(
   chargeHandle: string,
   apiKey: string
@@ -114,7 +130,8 @@ export const GET = async (
       order_id: orderId,
       // Live data from Reepay
       charge_handle: charge.handle,
-      status: charge.state,
+      // Derive effective status: Reepay keeps "settled" even after refunds
+      status: deriveEffectiveStatus(charge),
       currency: charge.currency,
       authorized_amount: charge.authorized_amount ?? 0,
       settled_amount: charge.settled_amount ?? 0,
