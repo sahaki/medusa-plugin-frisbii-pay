@@ -1,5 +1,5 @@
 ---
-description: "Use when writing, editing, or reviewing any code in the medusa-plugin-frisbii-pay project. Covers architecture conventions, module structure, API route patterns, workflow/step patterns, payment provider implementation, TypeScript standards, and Reepay integration rules."
+description: "Use when writing, editing, or reviewing any code in the medusa-plugin-frisbii-pay project. Covers architecture conventions, module structure, API route patterns, workflow/step patterns, payment provider implementation, TypeScript standards, Reepay integration rules, and mandatory code security requirements (OWASP Top 10, HMAC verification, secrets management, input validation, XSS prevention)."
 applyTo: "src/**"
 ---
 
@@ -198,6 +198,100 @@ export default async function handler({ container }) { ... }
 - Exports a default React component as the page.
 - Fetches/saves config via `/admin/frisbii/config` API route.
 - Must be placed at `src/admin/routes/settings/<slug>/page.tsx` for Medusa to discover it.
+
+---
+
+## Code Security
+
+This plugin handles **payment data and API secrets**. Security is non-negotiable. Every contributor must treat the following rules with the same weight as functional correctness.
+
+### Secrets & Credentials Management
+
+- **Never hardcode** API keys, webhook secrets, or tokens in source code — not even test credentials.
+- Store all secrets in the `frisbii_config` DB table or environment variables. Environment variables are fallback only.
+- Never log API keys, card data, or secrets — not even a partial key. Use `logger.debug("Config loaded")` not `logger.debug(config.apiKey)`.
+- When reading config from the DB, redact sensitive fields before including them in any log or API response:
+  ```typescript
+  const { api_key_live, api_key_test, webhook_secret, ...safeConfig } = config
+  res.json({ config: safeConfig })
+  ```
+
+### Input Validation & Sanitization (OWASP A03 — Injection)
+
+- **All** external input (request bodies, query params, webhook payloads) must be validated with Zod schemas before use. Never trust raw `req.body` or `req.query` without schema validation.
+- Admin routes that mutate state require a `validators.ts` with a strict Zod schema and a `middlewares.ts` that applies it. No exceptions.
+- Numeric fields (amounts, limits) must have explicit `.min()` / `.max()` constraints in the Zod schema.
+- String fields must have `.max(length)` constraints to prevent excessively large payloads.
+- Do not use raw string interpolation to build SQL queries. All DB access goes through MikroORM entities or parameterized queries via `__pg_connection__`. Never concatenate user input into SQL.
+
+### Webhook Security (HMAC Verification)
+
+- Every inbound webhook from Reepay **must** be verified with HMAC-SHA256 before any processing.
+- Use a **timing-safe comparison** (`crypto.timingSafeEqual`) when comparing the computed HMAC with the header value to prevent timing attacks:
+  ```typescript
+  import { timingSafeEqual, createHmac } from "crypto"
+
+  const expected = createHmac("sha256", webhookSecret).update(rawBody).digest()
+  const received = Buffer.from(signatureHeader, "hex")
+  if (expected.length !== received.length || !timingSafeEqual(expected, received)) {
+    return res.status(401).json({ error: "Invalid webhook signature" })
+  }
+  ```
+- Reject webhooks with a `401` immediately if the signature is missing or invalid — do not process the payload at all.
+- Access the raw `Buffer` body (before JSON parsing) for HMAC computation. Do not compute HMAC over a re-serialized JSON string.
+
+### Authentication & Authorization (OWASP A01 — Broken Access Control)
+
+- Admin routes must use `AuthenticatedMedusaRequest` to enforce Medusa's built-in admin authentication. Never expose admin endpoints without auth middleware.
+- Store/public routes must not expose internal config, API keys, or sensitive payment data — only session tokens and public-facing status.
+- Webhook routes are authenticated via HMAC signature only — do not add API-key-based auth on top; the HMAC check is sufficient.
+- When resolving module services from `req.scope`, do not expose the resolved service object directly in responses.
+
+### Error Handling & Information Disclosure (OWASP A09 — Logging Failures)
+
+- **Never** expose raw exception messages, stack traces, or internal DB errors to API callers. Catch errors and return a sanitized message:
+  ```typescript
+  try {
+    // ...
+  } catch (err) {
+    logger.error("Operation failed", { error: err })
+    return res.status(500).json({ error: "An unexpected error occurred" })
+  }
+  ```
+- Payment provider methods must return `{ error: string }` on failure following Medusa's provider contract — not throw — so that stack traces stay server-side.
+- Do not include Reepay API error bodies verbatim in responses to the storefront. Log them server-side and return a generic error message.
+
+### Dependency Security (OWASP A06 — Vulnerable Components)
+
+- Run `npm audit` before every release and fix all `critical` and `high` severity vulnerabilities.
+- Pin major versions of third-party dependencies in `package.json`. Avoid using `*` or unbounded ranges.
+- Do not add new runtime dependencies without reviewing the package's maintenance status and security history.
+- Admin UI packages (`@medusajs/ui`, `@medusajs/icons`, `@medusajs/admin-sdk`, `react`) must remain `peerDependencies` — never promote them to `dependencies`.
+
+### Admin UI Security (XSS Prevention — OWASP A03)
+
+- Never use `dangerouslySetInnerHTML` in any React component under `src/admin/`.
+- Do not render user-supplied strings (e.g., order metadata, customer notes) as HTML.
+- API responses rendered in the Admin UI must be treated as plain text — escape or use React's default safe rendering.
+- Do not store sensitive values (API keys, secrets) in React component state, `localStorage`, or `sessionStorage`. They belong in the backend DB only.
+
+### Outbound HTTP Security (SSRF Prevention — OWASP A10)
+
+- All outbound HTTP calls must go through `FrisbiiApiClient` or `FrisbiiCheckoutClient`. Never make ad-hoc `fetch`/`axios` calls to external URLs.
+- The base URLs for Reepay are hardcoded constants inside the clients. Do not accept base URLs from config or user input.
+- Validate any URL constructed from user input before making an outbound request.
+
+### Logging Security
+
+- Log security-relevant events at `logger.warn` or `logger.error`: failed webhook verifications, auth failures, exceeded retry limits.
+- Do not log full request bodies for payment-related routes — they may contain card tokens or PII.
+- Do not log Reepay session handles or charge handles at `logger.info` in production-level paths; use `logger.debug` which can be disabled.
+
+### Cryptographic Practices
+
+- Use `crypto` from Node.js core — do not use third-party crypto libraries unless required.
+- Always use HMAC-SHA256 for webhook signature verification (do not downgrade to MD5/SHA1).
+- Do not implement custom encryption for stored data — rely on DB-level encryption and environment-level secrets management.
 
 ---
 
