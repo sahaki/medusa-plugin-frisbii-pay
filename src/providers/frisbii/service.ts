@@ -270,6 +270,9 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
         charge_handle: chargeHandle,
         currency_code: input.currency_code,
         display_type: (extra.display_type as string) || config.display_type || "overlay",
+        // Store accept_url so the frontend can redirect the browser to this URL
+        // after payment is confirmed (avoids race condition with Reepay API state).
+        accept_url: (sessionPayload.accept_url as string) || null,
       },
     }
   }
@@ -281,25 +284,62 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
 
     const chargeHandle = (input.data as Record<string, unknown>)?.charge_handle as string
     if (!chargeHandle) {
+      this.logger_.error("Frisbii authorizePayment: missing charge_handle in session data")
       return {
         status: "error" as PaymentSessionStatus,
         data: input.data as Record<string, unknown>,
       }
     }
 
-    const charge = await this.apiClient_.get<{ state: string; amount: number }>(
-      `charge/${chargeHandle}`
-    )
+    // Retry polling the Reepay REST API to handle the race condition where
+    // the browser is redirected to accept_url before the charge has fully
+    // transitioned to "authorized" state in Reepay's REST API.
+    const MAX_AUTH_ATTEMPTS = 5
+    const AUTH_RETRY_DELAYS_MS = [1000, 2000, 3000, 5000]
 
-    if (charge.state === "authorized" || charge.state === "settled") {
-      return {
-        status: "authorized" as PaymentSessionStatus,
-        data: {
-          ...(input.data as Record<string, unknown>),
-          charge_state: charge.state,
-        },
+    for (let attempt = 0; attempt < MAX_AUTH_ATTEMPTS; attempt++) {
+      try {
+        this.logger_.debug(
+          `Frisbii authorizePayment: attempt ${attempt + 1}/${MAX_AUTH_ATTEMPTS} for charge "${chargeHandle}"`
+        )
+
+        const charge = await this.apiClient_.get<{ state: string; amount: number; handle: string }>(
+          `charge/${chargeHandle}`
+        )
+
+        this.logger_.debug(
+          `Frisbii authorizePayment: charge "${chargeHandle}" state = "${charge.state}"`
+        )
+
+        if (charge.state === "authorized" || charge.state === "settled") {
+          return {
+            status: "authorized" as PaymentSessionStatus,
+            data: {
+              ...(input.data as Record<string, unknown>),
+              charge_state: charge.state,
+            },
+          }
+        }
+
+        // Charge exists but not yet authorized (e.g. "created", "pending")
+        this.logger_.debug(
+          `Frisbii authorizePayment: charge state "${charge.state}" is not authorized — ` +
+          (attempt < AUTH_RETRY_DELAYS_MS.length ? "retrying..." : "giving up")
+        )
+      } catch (err: any) {
+        this.logger_.warn(
+          `Frisbii authorizePayment: error fetching charge "${chargeHandle}" (attempt ${attempt + 1}): ${err.message}`
+        )
+      }
+
+      if (attempt < AUTH_RETRY_DELAYS_MS.length) {
+        await new Promise((resolve) => setTimeout(resolve, AUTH_RETRY_DELAYS_MS[attempt]))
       }
     }
+
+    this.logger_.warn(
+      `Frisbii authorizePayment: charge "${chargeHandle}" not authorized after ${MAX_AUTH_ATTEMPTS} attempts`
+    )
 
     return {
       status: "pending" as PaymentSessionStatus,
