@@ -1,5 +1,5 @@
 ---
-description: "Use when writing, editing, or reviewing any code in the medusa-plugin-frisbii-pay project. Covers architecture conventions, module structure, API route patterns, workflow/step patterns, payment provider implementation, TypeScript standards, Reepay integration rules, and mandatory code security requirements (OWASP Top 10, HMAC verification, secrets management, input validation, XSS prevention)."
+description: "Use when writing, editing, or reviewing any code in the medusa-plugin-frisbii-pay project. Covers architecture conventions, module structure, API route patterns, workflow/step patterns, payment provider implementation, TypeScript standards, Reepay integration rules, admin UI i18n translation rules, and mandatory code security requirements (OWASP Top 10, HMAC verification, secrets management, input validation, XSS prevention)."
 applyTo: "src/**"
 ---
 
@@ -220,6 +220,79 @@ The widget returns `null` (renders nothing) when no Frisbii payment data exists 
 - Exports a default React component as the page.
 - Fetches/saves config via `/admin/frisbii/config` API route.
 - Must be placed at `src/admin/routes/settings/<slug>/page.tsx` for Medusa to discover it.
+
+### Admin UI Internationalisation (i18n) Rules
+
+All user-visible strings in the Admin UI (settings page and widgets) are translated via the `useAdminTranslation()` hook from `src/admin/locale/index.ts`.
+
+#### File locations
+
+```
+src/admin/locale/
+  index.ts               # useAdminTranslation() hook — detects browser language
+  translations/
+    en.ts                # Source of truth — all keys in English
+    da.ts                # Danish translations — must mirror en.ts keys exactly
+    index.ts             # Re-exports both translation objects
+```
+
+#### Mandatory rule — always add new strings to locale files
+
+> **Any user-visible string added to any admin component (settings page, widgets) MUST be added to the locale translation files at the same time.** Do not hardcode English strings directly in JSX.
+
+Steps when introducing a new translatable string:
+1. Choose a descriptive camelCase key (e.g. `saveConfiguration`).
+2. Add the English string to `src/admin/locale/translations/en.ts`.
+3. Add the Danish translation to `src/admin/locale/translations/da.ts`.
+4. Use `t.<key>` via the `useAdminTranslation()` hook in the component.
+
+```ts
+// src/admin/locale/translations/en.ts — add new key here
+export const en = {
+  saveConfiguration: "Save Configuration",
+  // ✅ new key
+  connectionFailed: "Connection failed. Check your API key.",
+}
+
+// src/admin/locale/translations/da.ts — add Danish equivalent here
+export const da = {
+  saveConfiguration: "Gem konfiguration",
+  // ✅ Danish translation must be added at the same time
+  connectionFailed: "Forbindelse mislykkedes. Kontroller din API-nøgle.",
+}
+```
+
+```tsx
+// Component usage
+const { t } = useAdminTranslation()
+return <Button>{t.saveConfiguration}</Button>  // ✅ translated
+// return <Button>Save Configuration</Button>   // ❌ hardcoded — not allowed
+```
+
+#### What counts as a translatable string
+
+The following must always go through i18n:
+- Button labels (e.g. `"Save Configuration"`, `"Test Connection"`)
+- Form field labels and placeholders shown to the admin user
+- Section headings rendered in the settings page
+- Status messages, toast notifications, error text shown in the UI
+- Table headers and column labels in admin widgets
+- Badge/chip text (e.g. `"Coming soon"`)
+- Tooltip text visible to users
+
+The following are **exempt** from i18n:
+- Internal `console.error` / `console.warn` messages
+- `data-testid` attribute values
+- CSS class names and `className` strings
+- TypeScript type/interface identifiers
+- Log messages written to the Medusa server logger
+
+#### Keeping `en.ts` and `da.ts` in sync
+
+- Both files must always have **identical sets of keys**.
+- If a key exists in `en.ts` but not in `da.ts` (or vice versa), that is a bug — fix it immediately.
+- When removing a key, remove it from both files at the same time.
+- Key naming follows camelCase: describe the UI element purpose (e.g. `comingSoon`, `apiKeyTest`, `statusSettled`).
 
 ---
 
