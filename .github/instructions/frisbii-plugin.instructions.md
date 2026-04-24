@@ -355,6 +355,22 @@ Required exports:
 - The `"./admin"` entry is required for Medusa to discover and bundle the admin settings page and widgets into the host app's Admin UI. Without it, the plugin's settings page will not appear in the sidebar.
 - When adding a new module under `src/modules/`, no extra entry needed — the wildcard patterns cover it.
 
+## Test Server Environment
+
+The plugin is tested against two local servers, both started with `npm run dev`.
+
+| Role | URL | Directory |
+|------|-----|-----------|
+| **Backend** (Medusa) | `http://localhost:9000/app/` | `D:\my_cource\medusa\002\medusa-store` |
+| **Frontend** (Storefront) | `http://localhost:8000/` | `D:\my_cource\medusa\002\medusa-store-storefront` |
+
+**Admin login**: `http://localhost:9000/app` — user `boyd@radarsofthouse.dk` / `Test#1234`
+
+> **IMPORTANT**: Never attempt to start, stop, or restart either server autonomously.
+> Always ask the user to perform any server Start/Restart action.
+
+---
+
 ## Admin UI Build & Deployment Notes
 
 - The admin UI (settings page, widgets) is **not** served from the plugin directly. It is compiled into the **host application's** admin bundle.
