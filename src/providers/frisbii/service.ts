@@ -253,7 +253,7 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
           id: `fses_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           session_handle: session.id,
           charge_handle: chargeHandle,
-          cart_id: "",
+          cart_id: (extra.cart_id as string) || "",
           payment_session_id: medusaSessionId,
           created_at: new Date(),
           updated_at: new Date(),
