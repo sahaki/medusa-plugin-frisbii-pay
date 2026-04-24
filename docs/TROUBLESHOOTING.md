@@ -201,6 +201,70 @@ Package subpath './.medusa/server/src/modules/frisbii-data' is not defined by "e
 
 ---
 
+## Locale & Translation Issues
+
+### Admin UI shows English even after selecting Danish locale
+
+**Problem**: After selecting "Dansk" in Frisbii Settings and saving, the labels still appear in English.
+
+**Cause**: The Admin bundle served by the host app still contains the old build of the plugin.
+
+**Solutions**:
+1. Rebuild the plugin first:
+   ```bash
+   cd /path/to/medusa-plugin-frisbii-pay
+   npm run build
+   ```
+
+2. Rebuild the host app's admin bundle:
+   ```bash
+   cd /path/to/medusa-store
+   npx medusa build
+   ```
+
+3. Restart the backend dev server (ask your system admin to do this).
+
+4. Hard-refresh the browser (Ctrl+Shift+R / Cmd+Shift+R) to clear the cached admin bundle.
+
+**Note**: `npm run dev` / `npx medusa develop` do **not** rebuild the admin bundle. A full `npx medusa build` is required after any plugin admin UI change.
+
+---
+
+### Admin UI shows wrong language immediately after changing locale
+
+**Problem**: Language switches instantly when the Locale dropdown is changed but before clicking Save — or conversely, language does not update until a page reload.
+
+**How it works**: The language re-renders only after the config is **saved** and the page component re-fetches it. Selecting a locale in the dropdown updates the React local state, which is passed directly to `useAdminTranslation`. This means the language preview updates immediately when you change the dropdown, and stays set after Save. If the language appears to revert after a hard reload, check that Save was successful (look for a toast notification).
+
+---
+
+### Balance labels appear in ALL CAPS (e.g. "RESTERENDE SALDO")
+
+**Problem**: Balance breakdown labels in the Invoice widget are displayed in uppercase regardless of locale.
+
+**Cause**: This was a bug in earlier versions where JS `.toUpperCase()` was applied to the translation string before rendering. It was fixed in the Unreleased changes.
+
+**Solution**: Rebuild the plugin and the host app:
+```bash
+# 1. In plugin directory
+npm run build
+
+# 2. In host app
+npx medusa build
+```
+
+---
+
+### Status text in Invoice widget shows in English (e.g. "Authorized") despite Danish locale
+
+**Problem**: The inline status text below the coloured badge is displayed in English.
+
+**Cause**: Fixed in the Unreleased changes. Earlier versions rendered the raw `effectiveState` string directly instead of resolving the `t.statusAuthorized` / `t.statusSettled` translation key.
+
+**Solution**: Rebuild the plugin and host app (see commands above).
+
+---
+
 ## Configuration Issues
 
 ### "Invalid API Key" error

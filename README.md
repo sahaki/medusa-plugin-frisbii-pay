@@ -12,6 +12,8 @@ Frisbii/Reepay payment provider for Medusa v2.
 - ✅ Admin configuration UI
 - ✅ Saved payment methods
 - ✅ Order payment status widget
+- ✅ Multi-language Admin UI (locale follows saved config, not browser language)
+- ✅ Danish (`da_DK`) and English (`en_GB`) translations — more coming soon
 
 ## 📦 Installation
 
@@ -83,7 +85,18 @@ FRISBII_API_MODE=test
 - [NPM Link Testing](./docs/NPM_LINK_TESTING.md) - Local development
 - [Troubleshooting](./docs/TROUBLESHOOTING.md) - Common issues
 
-## 🏗️ Architecture
+## � Admin UI Language
+
+The Admin Settings page and Invoice widget display in the language configured in **Frisbii Settings → Locale**. No need to change your browser language.
+
+| Locale setting | Admin UI language |
+|----------------|-------------------|
+| `en_GB` | English |
+| `da_DK` | Dansk (Danish) |
+
+More languages coming soon. See [Configuration Guide](./docs/CONFIGURATION.md#locale-and-admin-ui-language) for details.
+
+## �🏗️ Architecture
 
 See [Architecture Guide](./docs/ARCHITECTURE.md) for detailed information about:
 - System components

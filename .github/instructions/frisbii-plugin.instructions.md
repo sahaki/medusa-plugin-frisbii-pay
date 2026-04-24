@@ -229,7 +229,7 @@ All user-visible strings in the Admin UI (settings page and widgets) are transla
 
 ```
 src/admin/locale/
-  index.ts               # useAdminTranslation() hook — detects browser language
+  index.ts               # useAdminTranslation(overrideLocale?) hook
   translations/
     en.ts                # Source of truth — all keys in English
     da.ts                # Danish translations — must mirror en.ts keys exactly
@@ -244,7 +244,7 @@ Steps when introducing a new translatable string:
 1. Choose a descriptive camelCase key (e.g. `saveConfiguration`).
 2. Add the English string to `src/admin/locale/translations/en.ts`.
 3. Add the Danish translation to `src/admin/locale/translations/da.ts`.
-4. Use `t.<key>` via the `useAdminTranslation()` hook in the component.
+4. Use `t.<key>` via the `useAdminTranslation(overrideLocale?)` hook in the component.
 
 ```ts
 // src/admin/locale/translations/en.ts — add new key here
@@ -252,10 +252,13 @@ export const en = {
   saveConfiguration: "Save Configuration",
   // ✅ new key
   connectionFailed: "Connection failed. Check your API key.",
-}
+} as const
+
+// TranslationKeys uses a mapped type — translation files may assign any string
+export type TranslationKeys = { [K in keyof typeof en]: string }
 
 // src/admin/locale/translations/da.ts — add Danish equivalent here
-export const da = {
+export const da: TranslationKeys = {
   saveConfiguration: "Gem konfiguration",
   // ✅ Danish translation must be added at the same time
   connectionFailed: "Forbindelse mislykkedes. Kontroller din API-nøgle.",
@@ -263,9 +266,14 @@ export const da = {
 ```
 
 ```tsx
-// Component usage
-const { t } = useAdminTranslation()
+// Settings page — pass config.locale to drive language from saved config
+const { t } = useAdminTranslation(config?.locale)
 return <Button>{t.saveConfiguration}</Button>  // ✅ translated
+
+// Widget — fetch config locale on mount then pass to hook
+const [configLocale, setConfigLocale] = useState<string | undefined>(undefined)
+const { t } = useAdminTranslation(configLocale)
+
 // return <Button>Save Configuration</Button>   // ❌ hardcoded — not allowed
 ```
 
@@ -293,6 +301,18 @@ The following are **exempt** from i18n:
 - If a key exists in `en.ts` but not in `da.ts` (or vice versa), that is a bug — fix it immediately.
 - When removing a key, remove it from both files at the same time.
 - Key naming follows camelCase: describe the UI element purpose (e.g. `comingSoon`, `apiKeyTest`, `statusSettled`).
+
+#### `useAdminTranslation` hook signature
+
+```ts
+useAdminTranslation(overrideLocale?: string): { t: TranslationKeys; locale: "en" | "da" }
+```
+
+- When `overrideLocale` is provided (e.g. `"da_DK"` or `"en_GB"` from the saved config), it takes precedence over the browser's `navigator.language`.
+- Both underscore (`da_DK`) and hyphen (`da-DK`) formats are accepted.
+- The Settings page and every admin widget **must** pass `config?.locale` (or a fetched locale) as `overrideLocale`. Do not call the hook without an override unless there is no config context.
+- Do **not** apply `.toUpperCase()` to translated strings in JSX. Use CSS `uppercase` (via `className` or `style`) so the underlying string remains translatable.
+- Status labels in the Invoice widget are resolved via `t[\`status${PascalCase}\`]` — follow that pattern for any new status badge or chip.
 
 ---
 

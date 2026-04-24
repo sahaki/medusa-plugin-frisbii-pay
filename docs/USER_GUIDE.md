@@ -57,6 +57,28 @@ Your admin will add these credentials to your store settings. You'll provide:
 
 Once configured, Frisbii Payment is active!
 
+## Changing the Admin Interface Language
+
+You can change the language of the Frisbii Settings page and all Frisbii-related labels in the Admin (including the Invoice widget on order pages) without changing your browser language.
+
+1. Go to **Admin → Settings → Frisbii Pay**
+2. Scroll to the **Payment Display** section
+3. Open the **Locale / Sprog** dropdown
+4. Select your preferred language (e.g. **Dansk** for Danish, **English** for English)
+5. Click **Save Configuration / Gem konfiguration**
+
+The page immediately switches to the selected language. The Invoice widget on order detail pages will also display in that language the next time an order is opened.
+
+> **Note**: The Locale setting also controls the language shown to customers during checkout on the Reepay payment page. Changing it affects both the Admin UI and the customer-facing checkout flow.
+
+### Supported Languages
+
+| Label | Locale |
+|-------|--------|
+| English | `en_GB` |
+| Dansk | `da_DK` |
+| *Coming soon* | Swedish, Norwegian, German, French, Spanish, Dutch, Polish |
+
 ## Managing Payments
 
 ### Viewing Payment Status

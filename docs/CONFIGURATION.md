@@ -187,6 +187,47 @@ curl -X POST http://localhost:9000/admin/frisbii/verify-connection \
 # }
 ```
 
+## Locale and Admin UI Language
+
+The `locale` field in the Frisbii config controls two things:
+
+1. **Frontend checkout language** — passed to the Reepay checkout session so the payment window appears in the chosen language.
+2. **Admin UI language** — the Settings page and the Invoice widget on the order detail page automatically switch to the saved locale without requiring the admin user to change their browser language.
+
+### Supported Locales
+
+| Value | Language | Admin UI | Checkout |
+|-------|----------|----------|----------|
+| `en_GB` | English | ✅ | ✅ |
+| `da_DK` | Dansk (Danish) | ✅ | ✅ |
+| `sv_SE` | Svenska (Swedish) | coming soon | ✅ |
+| `nb_NO` | Norsk (Norwegian) | coming soon | ✅ |
+| `de_DE` | Deutsch (German) | coming soon | ✅ |
+| `fr_FR` | Français (French) | coming soon | ✅ |
+| `es_ES` | Español (Spanish) | coming soon | ✅ |
+| `nl_NL` | Nederlands (Dutch) | coming soon | ✅ |
+| `pl_PL` | Polski (Polish) | coming soon | ✅ |
+
+### How config-driven locale works
+
+- The `useAdminTranslation(overrideLocale?)` hook in `src/admin/locale/index.ts` accepts an optional locale string.
+- The Settings page loads config from `/admin/frisbii/config` on mount and passes `config.locale` to the hook.
+- The Invoice widget does the same via a separate one-time fetch.
+- When `overrideLocale` is provided, it takes priority over `navigator.language`. The browser language is only used as a fallback when the config has not been loaded yet or when no override is supplied.
+
+```tsx
+// In both Settings page and Invoice widget:
+const { t } = useAdminTranslation(config?.locale)  // "da_DK" → Danish UI
+```
+
+### Changing the Admin language
+
+1. Go to **Admin → Settings → Frisbii Pay**
+2. Under **Payment Display**, open the **Locale** dropdown
+3. Select the desired language
+4. Click **Save Configuration**
+5. The page immediately re-renders in the selected language — no browser setting change or page reload required
+
 ## Webhook Configuration
 
 ### Setting Up Webhooks

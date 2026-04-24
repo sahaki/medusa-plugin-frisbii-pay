@@ -316,12 +316,13 @@ Respond 200 OK
 
 - **frisbii-order-payment.tsx**: React widget displayed in the **right sidebar of the order detail page**, after the Customer card.
   - Zone: `"order.details.side.after"`
+  - On mount, fetches the saved Frisbii config locale from `GET /admin/frisbii/config` and passes it to `useAdminTranslation(overrideLocale)` so the widget labels match the configured language.
   - Fetches live payment data from `GET /admin/frisbii/payment-status/:orderId` on every page load.
   - Displays an **Invoice card** modelled after the Reepay WooCommerce plugin:
     - Invoice handle (Reepay charge handle)
-    - State label with colour coding (Settled = green, Authorized = orange, Cancelled/Failed = red)
+    - State label with colour coding (Settled = green, Authorized = orange, Cancelled/Failed = red). The inline status text is resolved via the `t.status${PascalCase}` translation key.
     - Payment method with card logo image + masked PAN
-    - Balance breakdown: Remaining Balance, Total Authorized, Total Settled, Total Refunded
+    - Balance breakdown: Remaining Balance, Total Authorized, Total Settled, Total Refunded (labels passed as-is from the translation hook; styled as uppercase via CSS in the `BalanceLine` component)
     - Transaction history list
     - **See invoice** button linking to `https://admin.billwerk.plus/#/rp/payments/invoices/invoice/{handle}`
   - Returns `null` (renders nothing) when the order has no Frisbii payment data.
@@ -347,6 +348,13 @@ React component that provides a full configuration UI in the Admin sidebar under
   - Select allowed payment methods (card, MobilePay, Apple Pay, etc.)
   - Test API connection
 - Saves configuration to `frisbii_config` table via `/admin/frisbii/config` endpoint
+- The saved `locale` field drives the display language: once `config.locale` is loaded the component re-renders in the selected language without requiring a browser language change.
+
+**Internationalisation (`src/admin/locale/`)**:
+
+- `index.ts` — exports `useAdminTranslation(overrideLocale?: string)`. When `overrideLocale` is provided (e.g. `"da_DK"` from config) it takes precedence over `navigator.language`. Falls back to English.
+- `translations/en.ts` — source of truth for all keys. Exported type `TranslationKeys = { [K in keyof typeof en]: string }` (mapped type, not literal) so other locale files can provide any string value.
+- `translations/da.ts` — Danish translations. Must implement all keys from `TranslationKeys`.
 
 **Build & Discovery**:
 - Admin UI code is compiled by `medusa plugin:build` into `.medusa/server/src/admin/index.js` (CommonJS) and `index.mjs` (ESM)

@@ -104,6 +104,70 @@ npm run build
 npx tsc --noEmit
 ```
 
+## Adding or Updating Translations
+
+Any user-visible string added to the Admin UI must go through the i18n system. Hardcoded English strings in JSX are not allowed.
+
+### Adding a new string
+
+1. Add the key and English text to `src/admin/locale/translations/en.ts`:
+   ```ts
+   export const en = {
+     // ... existing keys ...
+     myNewLabel: "My New Label",  // ✅ add here
+   } as const
+   ```
+
+2. Add the Danish translation to `src/admin/locale/translations/da.ts` **at the same time**:
+   ```ts
+   export const da: TranslationKeys = {
+     // ... existing keys ...
+     myNewLabel: "Mit nye label",  // ✅ must be added simultaneously
+   }
+   ```
+
+3. Use `t.myNewLabel` in your component via the `useAdminTranslation` hook:
+   ```tsx
+   const { t } = useAdminTranslation(config?.locale)
+   return <Label>{t.myNewLabel}</Label>
+   ```
+
+4. TypeScript will report a compile error if `da.ts` is missing any key from `en.ts` — this is intentional.
+
+### Adding a new language
+
+1. Create `src/admin/locale/translations/<lang>.ts` that implements `TranslationKeys`:
+   ```ts
+   import type { TranslationKeys } from "./en"
+   export const sv: TranslationKeys = {
+     apiConnection: "API och anslutning",
+     // ... all other keys ...
+   }
+   ```
+
+2. Register the new locale in `src/admin/locale/index.ts`:
+   ```ts
+   import { sv } from "./translations/sv"
+   const TRANSLATIONS = { en, da, sv }
+
+   function resolveLocaleKey(locale: string): "en" | "da" | "sv" {
+     if (locale.startsWith("sv")) return "sv"
+     if (locale.startsWith("da")) return "da"
+     return "en"
+   }
+   ```
+
+3. Add the locale option to the `LOCALES` array in `src/admin/routes/settings/frisbii/page.tsx`:
+   ```ts
+   { value: "sv_SE", enabled: true }  // change enabled: false → true
+   ```
+
+4. Update the `localeComingSoon` badge logic in the settings page to no longer show "Coming soon" for the new locale.
+
+5. Update `docs/CONFIGURATION.md` locale table to mark the new language as supported.
+
+---
+
 ## Code Style
 
 ### TypeScript Guidelines

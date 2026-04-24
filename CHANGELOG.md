@@ -8,9 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Config-driven Admin UI locale**: `useAdminTranslation(overrideLocale?)` hook now accepts an optional locale override. Both the Settings page and the Invoice widget derive their display language from the saved `locale` field in Frisbii config instead of relying solely on the browser's `navigator.language`. Without an override the hook still falls back to browser language.
 - Initial project setup
 - Directory structure created
 - Package configuration
+
+### Fixed
+- **Invoice widget — balance label casing**: Balance breakdown labels (Remaining Balance, Total Authorized, Total Settled, Total Refunded) were rendered via JS `.toUpperCase()`, so Danish translations were displayed as "RESTERENDE SALDO" instead of "Resterende saldo". Labels are now passed as-is from the translation hook and styled with CSS `uppercase` in `BalanceLine`.
+- **Invoice widget — status text translation**: The inline state text below the status badge was rendering the raw `effectiveState` string in English (e.g. `"authorized"` → `"Authorized"`) regardless of locale. It now resolves via the translation key `t.status${PascalCase}` just like the badge does, falling back to formatted English only when no key is found.
+- **TypeScript `TranslationKeys` type**: Changed from `typeof en` (inferred literal types) to `{ [K in keyof typeof en]: string }` (mapped type). This allows `da.ts` and future translation files to assign any string value without TypeScript compile errors while still enforcing that all keys from `en.ts` are present.
 
 ## [0.1.0-beta.1] - 2026-04-02
 
