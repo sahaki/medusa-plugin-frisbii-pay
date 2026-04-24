@@ -4,6 +4,7 @@ import { ArrowPathMini } from "@medusajs/icons"
 import { DetailWidgetProps, AdminOrder } from "@medusajs/framework/types"
 import { useCallback, useEffect, useState } from "react"
 import { CARD_LOGOS } from "../assets/card-logos"
+import { useAdminTranslation } from "../locale/index"
 
 interface CardTransaction {
   card_type?: string
@@ -54,15 +55,6 @@ const STATUS_COLORS: Record<string, "green" | "orange" | "red" | "grey"> = {
   cancelled: "red",
   failed: "red",
   pending: "grey",
-}
-
-const TX_TYPE_LABELS: Record<string, string> = {
-  // Reepay returns "authorization"; keep "authorize" as fallback
-  authorization: "Authorization",
-  authorize: "Authorization",
-  settle: "Settlement",
-  refund: "Refund",
-  cancel: "Cancellation",
 }
 
 const TX_TYPE_COLORS: Record<string, "green" | "orange" | "red" | "grey"> = {
@@ -154,6 +146,7 @@ function BalanceLine({
 // ─── Main Widget ──────────────────────────────────────────────────────────────
 
 const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
+  const { t } = useAdminTranslation()
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshToken, setRefreshToken] = useState(0)
@@ -178,11 +171,11 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
     return (
       <Container className="divide-y p-0">
         <div className="flex items-center justify-between px-6 py-4">
-          <Heading level="h2">Frisbii Invoice</Heading>
+          <Heading level="h2">{t.invoice}</Heading>
           <ArrowPathMini className="animate-spin text-ui-fg-muted" />
         </div>
         <div className="px-6 py-4">
-          <Text className="text-ui-fg-muted">Loading…</Text>
+          <Text className="text-ui-fg-muted">{t.loading}</Text>
         </div>
       </Container>
     )
@@ -233,17 +226,18 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
     <Container className="divide-y p-0">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4">
-        <Heading level="h2">Frisbii Invoice</Heading>
+        <Heading level="h2">{t.invoice}</Heading>
         <div className="flex items-center gap-2">
           {effectiveState && (
             <Badge color={STATUS_COLORS[effectiveState] || "grey"}>
-              {effectiveState.replace(/_/g, " ").charAt(0).toUpperCase() + effectiveState.replace(/_/g, " ").slice(1)}
+              {(t as any)[`status${effectiveState.split("_").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join("")}`] ||
+                effectiveState.replace(/_/g, " ").charAt(0).toUpperCase() + effectiveState.replace(/_/g, " ").slice(1)}
             </Badge>
           )}
           <button
             onClick={() => setRefreshToken((n) => n + 1)}
             disabled={loading}
-            title="Refresh invoice data"
+            title={t.refresh}
             className="text-ui-fg-muted hover:text-ui-fg-base transition-colors disabled:opacity-40"
           >
             <ArrowPathMini className={loading ? "animate-spin" : ""} />
@@ -256,7 +250,7 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
         {paymentStatus.charge_handle && (
           <div className="flex flex-col gap-0.5">
             <Text size="xsmall" className="text-ui-fg-muted uppercase tracking-wide">
-              Invoice handle
+              {t.invoiceHandle}
             </Text>
             <Text size="small">{paymentStatus.charge_handle}</Text>
           </div>
@@ -265,7 +259,7 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
         {/* State label (redundant with badge but matches WP layout reference) */}
         <div className="flex flex-col gap-0.5">
           <Text size="xsmall" className="text-ui-fg-muted uppercase tracking-wide">
-            State
+            {t.status}
           </Text>
           <Text
             size="small"
@@ -279,7 +273,7 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
         {hasCardPayment && (
           <div className="flex flex-col gap-0.5">
             <Text size="xsmall" className="text-ui-fg-muted uppercase tracking-wide">
-              Payment method
+              {t.paymentMethod}
             </Text>
             <div className="flex items-center gap-2">
               {cardLogoUri ? (
@@ -314,13 +308,13 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
 
         {/* Balance breakdown */}
         <div className="border-t border-ui-border-base pt-3 flex flex-col">
-          <BalanceLine label="REMAINING BALANCE" amount={remainingBalance} currency={currency} />
-          <BalanceLine label="TOTAL AUTHORIZED" amount={authorizedAmount} currency={currency} />
-          <BalanceLine label="TOTAL SETTLED" amount={settledAmount} currency={currency} />
-          <BalanceLine label="TOTAL REFUNDED" amount={refundedAmount} currency={currency} />
+          <BalanceLine label={t.remainingBalance.toUpperCase()} amount={remainingBalance} currency={currency} />
+          <BalanceLine label={t.totalAuthorized.toUpperCase()} amount={authorizedAmount} currency={currency} />
+          <BalanceLine label={t.totalSettled.toUpperCase()} amount={settledAmount} currency={currency} />
+          <BalanceLine label={t.totalRefunded.toUpperCase()} amount={refundedAmount} currency={currency} />
           {paymentStatus.surcharge_fee != null && paymentStatus.surcharge_fee > 0 && (
             <BalanceLine
-              label="SURCHARGE FEE"
+              label={t.fee.toUpperCase()}
               amount={paymentStatus.surcharge_fee}
               currency={currency}
             />
@@ -331,7 +325,7 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
         {paymentStatus.transactions && paymentStatus.transactions.length > 0 && (
           <div className="border-t border-ui-border-base pt-3 flex flex-col gap-2">
             <Text weight="plus" size="small">
-              Transactions
+              {t.balance}
             </Text>
             {paymentStatus.transactions.map((tx) => (
               <div
@@ -341,7 +335,11 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-2">
                     <Badge color={TX_TYPE_COLORS[tx.type] || "grey"} size="2xsmall">
-                      {TX_TYPE_LABELS[tx.type] || tx.type}
+                      {tx.type === "authorization" || tx.type === "authorize" ? t.txAuthorization
+                        : tx.type === "settle" ? t.txSettle
+                        : tx.type === "refund" ? t.txRefund
+                        : tx.type === "cancel" ? t.txCancel
+                        : tx.type}
                     </Badge>
                     {/* Only show state badge for unexpected error states */}
                     {tx.state === "failed" && (
@@ -367,7 +365,7 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
           <div className="border-t border-ui-border-base pt-3">
             <a href={invoiceUrl} target="_blank" rel="noopener noreferrer">
               <Button variant="secondary" size="small">
-                See invoice
+                {t.seeInvoice}
               </Button>
             </a>
           </div>

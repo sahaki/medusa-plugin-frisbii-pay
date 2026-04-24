@@ -22,7 +22,7 @@ export const AdminUpdateFrisbiiConfig = z.object({
   auto_cancel_timeout: z.number().int().min(1).optional(),
   allowed_payment_methods: z.array(z.string()).optional(),
   payment_icons: z.array(z.string()).optional(),
-  locale: z.string().optional(),
+  locale: z.enum(["en_GB", "da_DK"]).optional(),
   checkout_configuration: z.string().nullable().optional(),
   webhook_secret: z.string().nullable().optional(),
 })

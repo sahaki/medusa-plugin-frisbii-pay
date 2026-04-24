@@ -273,6 +273,8 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
         // Store accept_url so the frontend can redirect the browser to this URL
         // after payment is confirmed (avoids race condition with Reepay API state).
         accept_url: (sessionPayload.accept_url as string) || null,
+        // Store locale so the frontend FrisbiiPaymentButton can render translated text.
+        locale: locale || null,
       },
     }
   }
