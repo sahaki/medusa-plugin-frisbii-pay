@@ -146,16 +146,29 @@ function BalanceLine({
 // ─── Main Widget ──────────────────────────────────────────────────────────────
 
 const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
-  const { t } = useAdminTranslation()
+  const [configLocale, setConfigLocale] = useState<string | undefined>(undefined)
+  const { t } = useAdminTranslation(configLocale)
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshToken, setRefreshToken] = useState(0)
+
+  // Fetch saved locale from Frisbii config once on mount so widget language
+  // follows the admin-configured locale rather than browser language.
+  useEffect(() => {
+    fetch("/admin/frisbii/config", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: unknown) => {
+        const locale = (d as { config?: { locale?: string } }).config?.locale
+        if (locale) setConfigLocale(locale)
+      })
+      .catch(() => { /* keep browser language fallback */ })
+  }, [])
 
   const fetchData = useCallback(() => {
     setLoading(true)
     fetch(`/admin/frisbii/payment-status/${data.id}`, { credentials: "include" })
       .then((r) => r.json())
-      .then((d) => setPaymentStatus(d.payment_status || null))
+      .then((d: unknown) => setPaymentStatus((d as { payment_status?: PaymentStatus | null }).payment_status || null))
       .catch(() => setPaymentStatus(null))
       .finally(() => setLoading(false))
   }, [data.id])
@@ -265,7 +278,8 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
             size="small"
             style={{ color: STATUS_TEXT_COLORS[effectiveState] }}
           >
-            {effectiveState.replace(/_/g, " ").charAt(0).toUpperCase() + effectiveState.replace(/_/g, " ").slice(1)} 
+            {(t as any)[`status${effectiveState.split("_").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join("")}`] ||
+              effectiveState.replace(/_/g, " ").charAt(0).toUpperCase() + effectiveState.replace(/_/g, " ").slice(1)}
           </Text>
         </div>
 
@@ -308,13 +322,13 @@ const FrisbiiOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
 
         {/* Balance breakdown */}
         <div className="border-t border-ui-border-base pt-3 flex flex-col">
-          <BalanceLine label={t.remainingBalance.toUpperCase()} amount={remainingBalance} currency={currency} />
-          <BalanceLine label={t.totalAuthorized.toUpperCase()} amount={authorizedAmount} currency={currency} />
-          <BalanceLine label={t.totalSettled.toUpperCase()} amount={settledAmount} currency={currency} />
-          <BalanceLine label={t.totalRefunded.toUpperCase()} amount={refundedAmount} currency={currency} />
+          <BalanceLine label={t.remainingBalance} amount={remainingBalance} currency={currency} />
+          <BalanceLine label={t.totalAuthorized} amount={authorizedAmount} currency={currency} />
+          <BalanceLine label={t.totalSettled} amount={settledAmount} currency={currency} />
+          <BalanceLine label={t.totalRefunded} amount={refundedAmount} currency={currency} />
           {paymentStatus.surcharge_fee != null && paymentStatus.surcharge_fee > 0 && (
             <BalanceLine
-              label={t.fee.toUpperCase()}
+              label={t.fee}
               amount={paymentStatus.surcharge_fee}
               currency={currency}
             />

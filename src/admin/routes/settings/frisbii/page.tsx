@@ -63,12 +63,15 @@ interface FrisbiiConfig {
 }
 
 const FrisbiiSettingsPage = () => {
-  const { t } = useAdminTranslation()
   const [config, setConfig] = useState<FrisbiiConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
   const [testSuccess, setTestSuccess] = useState(false)
+
+  // Drive UI language from saved Frisbii locale instead of browser language.
+  // useMemo inside the hook re-computes when config?.locale changes after fetch.
+  const { t } = useAdminTranslation(config?.locale)
 
   useEffect(() => {
     fetch("/admin/frisbii/config", { credentials: "include" })

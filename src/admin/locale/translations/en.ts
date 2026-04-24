@@ -109,4 +109,6 @@ export const en = {
   statusPending: "Pending",
 } as const
 
-export type TranslationKeys = typeof en
+// TranslationKeys uses a mapped type so translation files (da.ts etc.) can
+// provide any string value for each key without matching English literals.
+export type TranslationKeys = { [K in keyof typeof en]: string }
