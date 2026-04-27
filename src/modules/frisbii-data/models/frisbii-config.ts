@@ -13,7 +13,7 @@ export const FrisbiiConfig = model.define("frisbii_config", {
   send_order_lines: model.boolean().default(true),
   send_phone_number: model.boolean().default(false),
   auto_capture: model.boolean().default(false),
-  auto_create_invoice: model.boolean().default(false),
+  auto_fulfill_items: model.boolean().default(false),
   surcharge_fee_enabled: model.boolean().default(false),
   save_card_enabled: model.boolean().default(false),
   save_card_default_unchecked: model.boolean().default(false),

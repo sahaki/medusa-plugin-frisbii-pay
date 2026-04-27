@@ -10,7 +10,7 @@ export const AdminUpdateFrisbiiConfig = z.object({
   send_order_lines: z.boolean().optional(),
   send_phone_number: z.boolean().optional(),
   auto_capture: z.boolean().optional(),
-  auto_create_invoice: z.boolean().optional(),
+  auto_fulfill_items: z.boolean().optional(),
   surcharge_fee_enabled: z.boolean().optional(),
   save_card_enabled: z.boolean().optional(),
   save_card_default_unchecked: z.boolean().optional(),

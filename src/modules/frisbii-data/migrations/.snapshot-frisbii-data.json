@@ -114,8 +114,8 @@
           "default": "false",
           "mappedType": "boolean"
         },
-        "auto_create_invoice": {
-          "name": "auto_create_invoice",
+        "auto_fulfill_items": {
+          "name": "auto_fulfill_items",
           "type": "boolean",
           "unsigned": false,
           "autoincrement": false,

@@ -45,7 +45,7 @@ interface FrisbiiConfig {
   send_order_lines: boolean
   send_phone_number: boolean
   auto_capture: boolean
-  auto_create_invoice: boolean
+  auto_fulfill_items: boolean
   surcharge_fee_enabled: boolean
   save_card_enabled: boolean
   save_card_default_unchecked: boolean
@@ -101,7 +101,7 @@ const FrisbiiSettingsPage = () => {
           send_order_lines: config.send_order_lines,
           send_phone_number: config.send_phone_number,
           auto_capture: config.auto_capture,
-          auto_create_invoice: config.auto_create_invoice,
+          auto_fulfill_items: config.auto_fulfill_items,
           surcharge_fee_enabled: config.surcharge_fee_enabled,
           save_card_enabled: config.save_card_enabled,
           save_card_default_unchecked: config.save_card_default_unchecked,
@@ -335,7 +335,7 @@ const FrisbiiSettingsPage = () => {
               ["send_order_lines",        t.sendOrderLines],
               ["send_phone_number",       t.sendPhoneNumber],
               ["auto_capture",            t.autoCapture],
-              ["auto_create_invoice",     t.autoCreateInvoice],
+              ["auto_fulfill_items",       t.autoFulfillItems],
               ["send_order_email",        t.sendOrderEmail],
               ["cancel_on_payment_cancel",t.cancelOnPaymentCancel],
               ["update_payment_method",   t.updatePaymentMethod],

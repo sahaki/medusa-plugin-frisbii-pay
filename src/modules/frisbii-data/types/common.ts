@@ -9,7 +9,7 @@ export interface FrisbiiConfigDTO {
   send_order_lines: boolean;
   send_phone_number: boolean;
   auto_capture: boolean;
-  auto_create_invoice: boolean;
+  auto_fulfill_items: boolean;
   surcharge_fee_enabled: boolean;
   save_card_enabled: boolean;
   save_card_default_unchecked: boolean;

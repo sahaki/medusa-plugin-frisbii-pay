@@ -48,7 +48,7 @@ export const da: TranslationKeys = {
   sendOrderLines: "Send ordrelinjer",
   sendPhoneNumber: "Send telefonnummer",
   autoCapture: "Automatisk hævning",
-  autoCreateInvoice: "Opret faktura automatisk",
+  autoFulfillItems: "Automatisk ekspeder ordrelinjer",
   sendOrderEmail: "Send ordrebekræftelse",
   cancelOnPaymentCancel: "Annuller ordre ved betalingsannullering",
   updatePaymentMethod: "Opdater betalingsmetode efter afregning",

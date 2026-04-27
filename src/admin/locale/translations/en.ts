@@ -45,7 +45,7 @@ export const en = {
   sendOrderLines: "Send Order Lines",
   sendPhoneNumber: "Send Phone Number",
   autoCapture: "Auto Capture",
-  autoCreateInvoice: "Auto Create Invoice",
+  autoFulfillItems: "Auto Fulfill Items",
   sendOrderEmail: "Send Order Email",
   cancelOnPaymentCancel: "Cancel Order on Payment Cancel",
   updatePaymentMethod: "Update Payment Method After Settlement",
