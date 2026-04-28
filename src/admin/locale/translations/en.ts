@@ -8,6 +8,7 @@ export const en = {
   paymentProcessing: "Payment Processing",
   savedCards: "Saved Cards",
   autoCancel: "Auto-Cancel Unpaid Orders",
+  debugMode: "Debug Mode",
   paymentMethods: "Payment Methods",
 
   // ─── API & Connection ────────────────────────────────────────────────────────
@@ -62,6 +63,11 @@ export const en = {
   autoCancelEnabled: "Enable Auto-Cancel",
   autoCancelTimeout: "Timeout (minutes)",
 
+  // ─── Debug Mode ──────────────────────────────────────────────────────────────
+  debugModeEnabled: "Enable Debug Logging",
+  debugModeHint: "Records API requests, responses, and key events to log files. May impact performance.",
+  debugModeWarning: "Debug mode is active. Log files are written to var/log/frisbii/. Disable when not needed.",
+
   // ─── Payment Methods ─────────────────────────────────────────────────────────
   allowedPaymentMethods: "Allowed Payment Methods",
   allowedPaymentMethodsHint:
@@ -77,6 +83,25 @@ export const en = {
   // ─── Loading / Error states ───────────────────────────────────────────────────
   loading: "Loading...",
   loadFailed: "Failed to load configuration",
+
+  // ─── Log Viewer ───────────────────────────────────────────────────────────────
+  logViewerTitle: "Frisbii Pay — Log Files",
+  logSource: "Source",
+  logDateCreated: "Date Created",
+  logDateModified: "Date Modified",
+  logFileSize: "Size",
+  logViewAction: "View",
+  logRefresh: "Refresh",
+  logBackToList: "Back to Logs",
+  logViewingFile: "Viewing log file",
+  logNoFiles: "No log files found.",
+  logDebugDisabled: "Debug mode is disabled. Enable it in Frisbii Pay settings to start logging.",
+  logGoToSettings: "Go to Settings",
+  logPage: "Page",
+  logOf: "of",
+  logPrevPage: "Previous",
+  logNextPage: "Next",
+  logLineNumber: "Line",
 
   // ─── Invoice widget ───────────────────────────────────────────────────────────
   invoice: "Invoice",

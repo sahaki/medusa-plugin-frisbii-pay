@@ -55,6 +55,7 @@ interface FrisbiiConfig {
   send_order_email: boolean
   auto_cancel_enabled: boolean
   auto_cancel_timeout: number
+  debug_enabled: boolean
   allowed_payment_methods: string[]
   payment_icons: string[]
   locale: string
@@ -111,6 +112,7 @@ const FrisbiiSettingsPage = () => {
           send_order_email: config.send_order_email,
           auto_cancel_enabled: config.auto_cancel_enabled,
           auto_cancel_timeout: config.auto_cancel_timeout,
+          debug_enabled: config.debug_enabled,
           allowed_payment_methods: config.allowed_payment_methods,
           payment_icons: config.payment_icons,
           locale: config.locale,
@@ -425,6 +427,30 @@ const FrisbiiSettingsPage = () => {
                   )
                 }
               />
+            </div>
+          )}
+        </div>
+      </Container>
+
+      {/* Debug Mode */}
+      <Container className="divide-y p-0">
+        <div className="px-6 py-4">
+          <Heading level="h2">{t.debugMode}</Heading>
+        </div>
+        <div className="flex flex-col gap-4 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1">
+              <Label>{t.debugModeEnabled}</Label>
+              <Text className="text-ui-fg-muted text-sm">{t.debugModeHint}</Text>
+            </div>
+            <Switch
+              checked={config.debug_enabled}
+              onCheckedChange={(v) => updateField("debug_enabled", v)}
+            />
+          </div>
+          {config.debug_enabled && (
+            <div className="rounded-md bg-ui-bg-subtle border border-ui-border-base p-3">
+              <Text className="text-ui-fg-subtle text-sm">{t.debugModeWarning}</Text>
             </div>
           )}
         </div>

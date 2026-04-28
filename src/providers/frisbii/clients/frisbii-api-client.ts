@@ -1,4 +1,5 @@
 import type { Logger } from "@medusajs/types"
+import { frisbiiApiLog } from "../../../utils/logger"
 
 export interface FrisbiiApiError {
   http_status: number
@@ -32,17 +33,20 @@ export class FrisbiiApiClient {
   protected apiKey: string
   protected logger: Logger
   protected timeout: number
+  protected debugEnabled: boolean
 
   constructor(config: {
     apiKey: string
     logger: Logger
     baseUrl?: string
     timeout?: number
+    debugEnabled?: boolean
   }) {
     this.apiKey = config.apiKey
     this.logger = config.logger
     this.baseUrl = config.baseUrl ?? "https://api.reepay.com/v1/"
     this.timeout = config.timeout ?? 30_000
+    this.debugEnabled = config.debugEnabled ?? false
 
     // Ensure baseUrl ends with /
     if (!this.baseUrl.endsWith("/")) {
@@ -52,6 +56,10 @@ export class FrisbiiApiClient {
 
   setApiKey(apiKey: string): void {
     this.apiKey = apiKey
+  }
+
+  setDebugEnabled(enabled: boolean): void {
+    this.debugEnabled = enabled
   }
 
   async get<T>(
@@ -101,6 +109,7 @@ export class FrisbiiApiClient {
   ): Promise<T> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+    const startTime = Date.now()
 
     const headers: Record<string, string> = {
       Authorization: this.getAuthHeader(),
@@ -127,16 +136,18 @@ export class FrisbiiApiClient {
 
       if (!response.ok) {
         let apiError: FrisbiiApiError
+        let errorBody: unknown
 
         try {
-          const errorBody = await response.json() as any
+          errorBody = await response.json() as any
+          const eb = errorBody as any
           apiError = {
             http_status: response.status,
             http_reason: response.statusText,
-            request_id: errorBody.request_id,
-            code: errorBody.code,
-            error: errorBody.error,
-            message: errorBody.message,
+            request_id: eb.request_id,
+            code: eb.code,
+            error: eb.error,
+            message: eb.message,
           }
         } catch {
           apiError = {
@@ -149,18 +160,50 @@ export class FrisbiiApiClient {
           `Frisbii API error: ${method} ${url} -> ${response.status} ${response.statusText}`
         )
 
+        if (this.debugEnabled) {
+          frisbiiApiLog({
+            method,
+            url,
+            requestBody: body,
+            responseBody: errorBody ?? apiError,
+            httpCode: response.status,
+            durationMs: Date.now() - startTime,
+          })
+        }
+
         throw new FrisbiiApiRequestError(apiError)
       }
 
       // Handle 204 No Content
       if (response.status === 204) {
         this.logger.debug(`Frisbii API response: ${method} ${url} -> 204`)
+        if (this.debugEnabled) {
+          frisbiiApiLog({
+            method,
+            url,
+            requestBody: body,
+            responseBody: null,
+            httpCode: 204,
+            durationMs: Date.now() - startTime,
+          })
+        }
         return undefined as T
       }
 
       const data = (await response.json()) as T
 
       this.logger.debug(`Frisbii API response: ${method} ${url} -> ${response.status}`)
+
+      if (this.debugEnabled) {
+        frisbiiApiLog({
+          method,
+          url,
+          requestBody: body,
+          responseBody: data,
+          httpCode: response.status,
+          durationMs: Date.now() - startTime,
+        })
+      }
 
       return data
     } catch (error) {
@@ -175,6 +218,16 @@ export class FrisbiiApiClient {
           http_status: 0,
           http_reason: "Request timeout",
           message: `Request to ${url} timed out after ${this.timeout}ms`,
+        }
+        if (this.debugEnabled) {
+          frisbiiApiLog({
+            method,
+            url,
+            requestBody: body,
+            responseBody: { error: "timeout" },
+            httpCode: 0,
+            durationMs: Date.now() - startTime,
+          })
         }
         throw new FrisbiiApiRequestError(apiError)
       }

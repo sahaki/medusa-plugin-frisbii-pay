@@ -41,6 +41,7 @@ import {
   getCartIdFromPaymentSessionId,
   getOrderIdFromPaymentSessionId,
 } from "../../utils/order-lines"
+import { frisbiiLog } from "../../utils/logger"
 
 type Options = {
   apiKeyTest?: string
@@ -59,6 +60,7 @@ interface FrisbiiDbConfig {
   checkout_configuration: string | null
   send_order_lines: boolean
   send_phone_number: boolean
+  debug_enabled: boolean
 }
 
 type InjectedDependencies = {
@@ -165,7 +167,9 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
       allowed_payment_methods: [],
       auto_capture: false,
       checkout_configuration: null,      send_order_lines: true,
-      send_phone_number: false,    }
+      send_phone_number: false,
+      debug_enabled: false,
+    }
   }
 
   /**
@@ -185,7 +189,9 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
     }
 
     this.apiClient_.setApiKey(apiKey)
+    this.apiClient_.setDebugEnabled(config.debug_enabled ?? false)
     this.checkoutClient_.setApiKey(apiKey)
+    this.checkoutClient_.setDebugEnabled(config.debug_enabled ?? false)
     return apiKey
   }
 
@@ -304,6 +310,12 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
       "session/charge",
       sessionPayload
     )
+
+    frisbiiLog("frisbii-checkout", "INFO", `initiatePayment: session created for handle ${chargeHandle}`, {
+      session_id: session.id,
+      charge_handle: chargeHandle,
+      currency: input.currency_code,
+    })
 
     // Store the session mapping so webhooks can look up the Medusa payment session.
     // Also resolve and store the cart_id via the payment_collection chain so
@@ -483,6 +495,12 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
       settleBody
     )
 
+    frisbiiLog("frisbii-capture", "INFO", `capturePayment: settled charge ${chargeHandle}`, {
+      charge_handle: chargeHandle,
+      state: result.state,
+      order_lines_sent: Object.keys(settleBody).length > 0,
+    })
+
     return {
       data: {
         ...(input.data as Record<string, unknown>),
@@ -508,6 +526,12 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
       refundPayload
     )
 
+    frisbiiLog("frisbii-capture", "INFO", `refundPayment: refunded charge ${chargeHandle}`, {
+      charge_handle: chargeHandle,
+      refund_id: result.id,
+      state: result.state,
+    })
+
     return {
       data: {
         ...(input.data as Record<string, unknown>),
@@ -524,6 +548,10 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
 
     const chargeHandle = (input.data as Record<string, unknown>)?.charge_handle as string
     await this.apiClient_.post(`charge/${chargeHandle}/cancel`)
+
+    frisbiiLog("frisbii-capture", "INFO", `cancelPayment: cancelled charge ${chargeHandle}`, {
+      charge_handle: chargeHandle,
+    })
 
     return {
       data: {

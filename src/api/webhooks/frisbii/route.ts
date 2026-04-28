@@ -1,4 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { frisbiiLog } from "../../../utils/logger"
 
 const FRISBII_DATA_MODULE = "frisbiiData"
 
@@ -91,6 +92,13 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   logger.info(`Frisbii webhook received: ${payload.event_type} for invoice ${payload.invoice}`)
 
+  frisbiiLog("frisbii-webhook", "INFO", `Webhook received: ${payload.event_type}`, {
+    event_id: payload.id,
+    event_type: payload.event_type,
+    invoice: payload.invoice,
+    timestamp: payload.timestamp,
+  })
+
   if (!payload.event_type) {
     res.status(400).json({ status: "error", message: "Missing event_type" })
     return
@@ -108,6 +116,10 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       .digest("hex")
     if (payload.signature !== expectedSig) {
       logger.warn("Frisbii webhook: invalid signature")
+      frisbiiLog("frisbii-webhook", "WARN", "Webhook signature verification failed", {
+        event_id: payload.id,
+        event_type: payload.event_type,
+      })
       res.status(401).json({ status: "error", message: "Invalid signature" })
       return
     }
@@ -207,12 +219,22 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
         ...chargeData,
       })
       logger.info(`Frisbii webhook: updated payment status for order ${orderId} to ${newStatus}`)
+      frisbiiLog("frisbii-webhook", "INFO", `Webhook processed: ${payload.event_type} — updated order ${orderId}`, {
+        event_type: payload.event_type,
+        order_id: orderId,
+        status: newStatus,
+      })
     } else {
       await frisbiiData.createFrisbiiPaymentStatuses({
         order_id: orderId,
         ...chargeData,
       })
       logger.info(`Frisbii webhook: created payment status for order ${orderId} with status ${newStatus}`)
+      frisbiiLog("frisbii-webhook", "INFO", `Webhook processed: ${payload.event_type} — created status for order ${orderId}`, {
+        event_type: payload.event_type,
+        order_id: orderId,
+        status: newStatus,
+      })
     }
 
     res.status(200).json({ status: "ok" })

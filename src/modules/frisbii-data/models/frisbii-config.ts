@@ -23,6 +23,7 @@ export const FrisbiiConfig = model.define("frisbii_config", {
   send_order_email: model.boolean().default(true),
   auto_cancel_enabled: model.boolean().default(false),
   auto_cancel_timeout: model.number().default(30),
+  debug_enabled: model.boolean().default(false),
   allowed_payment_methods: model.json().default([] as any),
   payment_icons: model.json().default([] as any),
   locale: model.text().default("en_GB"),

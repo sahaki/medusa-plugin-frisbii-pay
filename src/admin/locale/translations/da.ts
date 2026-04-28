@@ -11,6 +11,7 @@ export const da: TranslationKeys = {
   paymentProcessing: "Betalingsbehandling",
   savedCards: "Gemte kort",
   autoCancel: "Auto-annuller ubetalte ordrer",
+  debugMode: "Fejlsøgningstilstand",
   paymentMethods: "Betalingsmetoder",
 
   // ─── API & Connection ─────────────────────────────────────────────────────────
@@ -65,6 +66,11 @@ export const da: TranslationKeys = {
   autoCancelEnabled: "Aktiver auto-annullering",
   autoCancelTimeout: "Tidsfrist (minutter)",
 
+  // ─── Debug Mode ───────────────────────────────────────────────────────────────
+  debugModeEnabled: "Aktiver fejlsøgningslogning",
+  debugModeHint: "Registrerer API-anmodninger, svar og vigtige hændelser i logfiler. Kan påvirke ydeevnen.",
+  debugModeWarning: "Fejlsøgningstilstand er aktiv. Logfiler skrives til var/log/frisbii/. Deaktiver når det ikke er nødvendigt.",
+
   // ─── Payment Methods ──────────────────────────────────────────────────────────
   allowedPaymentMethods: "Tilladte betalingsmetoder",
   allowedPaymentMethodsHint:
@@ -80,6 +86,25 @@ export const da: TranslationKeys = {
   // ─── Loading / Error states ───────────────────────────────────────────────────
   loading: "Indlæser...",
   loadFailed: "Konfiguration kunne ikke indlæses",
+
+  // ─── Log Viewer ───────────────────────────────────────────────────────────────
+  logViewerTitle: "Frisbii Pay — Logfiler",
+  logSource: "Kilde",
+  logDateCreated: "Oprettelsesdato",
+  logDateModified: "Ændringsdato",
+  logFileSize: "Størrelse",
+  logViewAction: "Vis",
+  logRefresh: "Opdater",
+  logBackToList: "Tilbage til logfiler",
+  logViewingFile: "Viser logfil",
+  logNoFiles: "Ingen logfiler fundet.",
+  logDebugDisabled: "Fejlsøgningstilstand er deaktiveret. Aktiver den i Frisbii Pay-indstillinger for at starte logning.",
+  logGoToSettings: "Gå til indstillinger",
+  logPage: "Side",
+  logOf: "af",
+  logPrevPage: "Forrige",
+  logNextPage: "Næste",
+  logLineNumber: "Linje",
 
   // ─── Invoice widget ────────────────────────────────────────────────────────────
   invoice: "Faktura",
