@@ -156,7 +156,8 @@ curl -X POST http://localhost:9000/admin/frisbii/config \
     "webhookSecret": "your_webhook_secret",
     "enabled": true,
     "testMode": false,
-    "processingCurrency": "USD"
+    "processingCurrency": "USD",
+    "sendOrderLines": true
   }'
 ```
 
@@ -186,6 +187,33 @@ curl -X POST http://localhost:9000/admin/frisbii/verify-connection \
 #   "message": "Successfully connected to Reepay API" 
 # }
 ```
+
+## Payment Processing Settings
+
+### Send Order Lines
+
+**Admin path**: Settings → Frisbii Pay → Payment Processing → Send Order Lines
+
+| Value | Behaviour |
+|-------|-----------|
+| `true` (default) | Builds an `order_lines` array from Medusa's cart/order tables and sends it to Reepay. The Reepay invoice shows each product, the shipping method, and any discount adjustments as individual line items. |
+| `false` | Sends only the total `amount` (in minor units). The Reepay invoice shows a single total with no line-item breakdown. |
+
+When enabled, line data is fetched directly from Medusa's database (`cart_line_item`, `cart_shipping_method`, `order_item`, `order_shipping_method`, and related tax/adjustment tables) via `__pg_connection__`. No storefront changes are needed. If the DB query fails for any reason the provider falls back to amount-only automatically so checkout is never blocked.
+
+The setting applies to **both**:
+- `initiatePayment()` — when the Reepay checkout session is created
+- `capturePayment()` / `settlePayment()` — when the payment is captured/settled
+
+### Send Phone Number
+
+When `true`, the customer's phone number is included in the Reepay customer record. Default: `false`.
+
+### Auto Capture
+
+When `true`, the payment is automatically captured/settled immediately after authorisation. Default: `false`.
+
+
 
 ## Locale and Admin UI Language
 

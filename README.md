@@ -14,6 +14,7 @@ Frisbii/Reepay payment provider for Medusa v2.
 - ✅ Order payment status widget
 - ✅ Multi-language Admin UI (locale follows saved config, not browser language)
 - ✅ Danish (`da_DK`) and English (`en_GB`) translations — more coming soon
+- ✅ **Send Order Lines** — forward itemised product + shipping lines to Reepay invoice (configurable per-store)
 
 ## 📦 Installation
 
@@ -85,7 +86,25 @@ FRISBII_API_MODE=test
 - [NPM Link Testing](./docs/NPM_LINK_TESTING.md) - Local development
 - [Troubleshooting](./docs/TROUBLESHOOTING.md) - Common issues
 
-## � Admin UI Language
+## 🗒️ Admin Settings Reference
+
+All settings are managed in **Admin → Settings → Frisbii Pay**. They are stored in the `frisbii_config` database table and cached for 30 seconds.
+
+| Setting | Section | Default | Description |
+|---------|---------|---------|-------------|
+| API Key (Test) | API & Connection | — | Reepay test private key (`priv_test_…`) |
+| API Key (Live) | API & Connection | — | Reepay live private key (`priv_…`) |
+| API Mode | API & Connection | `test` | `test` or `live` |
+| Enabled | Payment Display | `true` | Show Frisbii Pay at checkout |
+| Title | Payment Display | `Frisbii Payment` | Label shown on checkout payment selector |
+| Display Type | Payment Display | `overlay` | `overlay` / `embedded` / `redirect` |
+| Locale | Payment Display | `en_GB` | Language for Admin UI and Reepay checkout window |
+| **Send Order Lines** | **Payment Processing** | **`true`** | **When `true`, sends itemised product + shipping lines to Reepay. When `false`, sends total amount only.** |
+| Send Phone Number | Payment Processing | `false` | Include customer phone in Reepay customer record |
+| Auto Capture | Payment Processing | `false` | Automatically settle immediately after authorisation |
+| Save Card Enabled | Saved Cards | `false` | Allow customers to save cards for future purchases |
+
+## 🌐 Admin UI Language
 
 The Admin Settings page and Invoice widget display in the language configured in **Frisbii Settings → Locale**. No need to change your browser language.
 

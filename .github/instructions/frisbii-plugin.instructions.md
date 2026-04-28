@@ -51,6 +51,8 @@ src/
   jobs/                        # Scheduled jobs (frisbii-*.ts)
   types/                       # Shared TypeScript types
   utils/                       # Pure utility functions
+    order-lines.ts             # Builds Reepay order_lines arrays from Medusa DB (cart + order tables)
+    currency.ts                # toMinorUnits, ZERO_DECIMAL_CURRENCIES
   admin/
     widgets/                   # React admin widgets (order detail page)
       frisbii-order-payment.tsx  # Invoice widget, zone: order.details.side.after
@@ -97,6 +99,11 @@ src/
 - **Currency conversion**: Medusa v2 stores amounts in **major units** (e.g., `13.09` = €13.09). Reepay expects **minor units** (cents). Always use `toMinorUnits(amount, currencyCode)`.
 - Zero-decimal currencies (JPY, KRW, etc.) must NOT be multiplied by 100. Maintain the `ZERO_DECIMAL_CURRENCIES` set.
 - Config is loaded from the DB with a **30-second cache** (`CONFIG_CACHE_TTL_MS = 30_000`). Do not reload per-request unless the cache is expired.
+- **Send Order Lines**: Controlled by `config.send_order_lines` (boolean, default `true`).
+  - When `true`, `initiatePayment()` calls `buildCartOrderLines()` from `src/utils/order-lines.ts` and `capturePayment()` calls `buildOrderOrderLines()`. The resulting array is forwarded to Reepay in the `order_lines` field.
+  - When `false` (or on any DB error), only the total `amount` in minor units is sent — checkout is never blocked by a failed order-line build.
+  - `buildCartOrderLines` / `buildOrderOrderLines` query Medusa's cart/order tables via `__pg_connection__` directly (not via cross-module service calls).
+  - Both helpers return `null` on failure, which the provider treats as a signal to fall back to amount-only.
 - All provider methods must catch errors and return a meaningful `error` field in the output rather than throwing, following Medusa's provider contract.
 - HMAC webhook verification must always be performed before processing webhook payloads.
 

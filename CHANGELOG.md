@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Send Order Lines setting** (`send_order_lines`, default: `true`): Controls whether itemised order line details are forwarded to Reepay when a payment session is created and when a payment is captured.
+  - When `true`: the `order_lines` array is built from Medusa's cart/order tables and sent to Reepay. The Reepay invoice shows individual product rows, shipping, and discounts.
+  - When `false`: only the total `amount` is sent. The Reepay invoice shows a single total figure with no line-item breakdown.
+  - The setting is configurable in **Admin → Settings → Frisbii Pay → Payment Processing → Send Order Lines**.
+  - New utility file `src/utils/order-lines.ts` introduces `buildCartOrderLines()` (for `initiatePayment`) and `buildOrderOrderLines()` (for `capturePayment`), both querying Medusa DB tables via `__pg_connection__`. Both functions fall back to amount-only silently on any DB error so that checkout is never blocked.
+  - New helper `calculateTotalFromOrderLines()` for amount-validation use cases.
+  - New DB lookup helpers: `getCartIdFromPaymentSessionId()` and `getOrderIdFromPaymentSessionId()`.
 - **Config-driven Admin UI locale**: `useAdminTranslation(overrideLocale?)` hook now accepts an optional locale override. Both the Settings page and the Invoice widget derive their display language from the saved `locale` field in Frisbii config instead of relying solely on the browser's `navigator.language`. Without an override the hook still falls back to browser language.
 - Initial project setup
 - Directory structure created

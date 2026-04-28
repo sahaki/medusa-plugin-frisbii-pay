@@ -129,6 +129,17 @@ Fulfillment begins
 | **Failed** | Payment declined | Contact customer |
 | **Refunded** | Money returned to customer | Update order status |
 
+### Order Line Items on the Reepay Invoice
+
+When **Send Order Lines** is enabled (the default), each product, shipping method, and discount is sent to Reepay as a separate line item. This means:
+
+- The **Reepay / Billwerk+ invoice** shows the full itemised breakdown — product names, quantities, unit prices, VAT rates, and shipping.
+- The **Invoice card** in the Medusa Admin order detail sidebar still shows the totals as usual; the per-line detail is visible when you click **See invoice** to open the invoice in the Reepay dashboard.
+
+If you prefer not to share line-item details with Reepay (e.g., for privacy reasons), go to **Admin → Settings → Frisbii Pay → Payment Processing** and disable **Send Order Lines**. Reepay will then only receive the total amount.
+
+> **Note**: No storefront changes are required to enable or disable order lines. The setting takes effect on the next checkout.
+
 ### Handling Failed Payments
 
 **If a payment fails:**

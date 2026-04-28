@@ -79,6 +79,31 @@ class FrisbiiPaymentService extends AbstractPaymentProvider {
 }
 ```
 
+### Order Lines Utility (`src/utils/order-lines.ts`)
+
+Builds the `order_lines` array that is forwarded to Reepay when **Send Order Lines** is enabled. It queries Medusa's cart and order tables directly via `__pg_connection__` (no cross-module service call is required).
+
+| Exported helper | Used by | Purpose |
+|----------------|---------|---------|
+| `buildCartOrderLines(pgConn, cartId, currency)` | `initiatePayment()` | Builds lines from `cart_line_item` + `cart_shipping_method` |
+| `buildOrderOrderLines(pgConn, orderId, currency)` | `capturePayment()` | Builds lines from `order_item` + `order_shipping_method` |
+| `getCartIdFromPaymentSessionId(pgConn, sessionId)` | `initiatePayment()` | Resolves payment session → cart |
+| `getOrderIdFromPaymentSessionId(pgConn, sessionId)` | `capturePayment()` | Resolves payment session → order |
+| `calculateTotalFromOrderLines(lines)` | Internal validation | Sums line amounts for verification |
+
+Each line follows the Reepay `order_lines` schema:
+```typescript
+interface ReepayOrderLine {
+  ordertext: string      // Product title or shipping method name
+  quantity: number       // Line quantity (1 for shipping)
+  amount: number         // Unit price in minor units (inc. tax)
+  vat: number            // VAT rate as decimal fraction (e.g. 0.25 = 25%)
+  amount_incl_vat: boolean  // Always true
+}
+```
+
+If the DB query fails or no matching cart/order is found, both builder functions return `null` and the provider falls back to sending only the total amount — checkout is never blocked.
+
 **Payment Flow**:
 ```
 Customer Initiates Payment
