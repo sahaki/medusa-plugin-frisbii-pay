@@ -1,13 +1,28 @@
+﻿# -- Build outputs --------------------------------------------
 .medusa/
 dist/
+
+# -- Dependencies ---------------------------------------------
 node_modules/
+
+# -- Environment & secrets ------------------------------------
 .env
 .env.local
-.DS_Store
+
+# -- Logs -----------------------------------------------------
 *.log
+
+# -- Test & coverage ------------------------------------------
 coverage/
-.vscode/
+
+# -- Editor & IDE ---------------------------------------------
 .idea/
+.vscode/
+
+# -- OS artefacts ---------------------------------------------
+.DS_Store
+
+# -- Project-specific -----------------------------------------
 .playwright-mcp/
 debug/
 plans/

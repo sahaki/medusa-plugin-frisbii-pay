@@ -1,13 +1,31 @@
+﻿# -- Source & TypeScript --------------------------------------
 src/
 tsconfig.json
+
+# -- Environment & secrets ------------------------------------
 .env*
 !.env.example
-.vscode/
-.idea/
+
+# -- Logs -----------------------------------------------------
 *.log
+
+# -- Test & coverage ------------------------------------------
 coverage/
 integration-tests/
+
+# -- Documentation --------------------------------------------
 docs/
+flows/
+plans/
+
+# -- Version control ------------------------------------------
 .git/
 .gitignore
+
+# -- Editor & IDE ---------------------------------------------
+.idea/
+.vscode/
+
+# -- Project-specific -----------------------------------------
+.playwright-mcp/
 debug/
