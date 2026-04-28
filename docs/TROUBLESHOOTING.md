@@ -739,10 +739,13 @@ INSERT INTO frisbii_payment_status (order_id, ...) VALUES ('order_123', ...);
    - No IP restrictions blocking Reepay
    - Test with: `telnet your-backend 443`
 
-4. Check logs:
+4. Check logs (frisbii-webhook file):
    ```bash
-   npm run dev 2>&1 | grep -i webhook
-   tail -f logs/webhook.log
+   # If Debug Mode is enabled, check the log dashboard:
+   # Admin → Settings → Frisbii Pay Log → frisbii-webhook-YYYY-MM-DD.log
+   #
+   # Or read the file directly from disk:
+   cat var/log/frisbii/frisbii-webhook-$(date +%Y-%m-%d).log
    ```
 
 5. Manual retry (in Reepay):
@@ -917,6 +920,62 @@ INSERT INTO frisbii_payment_status (order_id, ...) VALUES ('order_123', ...);
 ### Q: Can I see all transactions somewhere?
 
 **A**: Yes, in Reepay dashboard and Medusa order details.
+
+---
+
+## Using Debug Mode to Diagnose Problems
+
+Debug Mode writes detailed API request/response logs to disk. It is the best first step when troubleshooting payment failures or integration issues.
+
+### Enabling Debug Mode
+
+1. Go to **Admin → Settings → Frisbii Pay**
+2. Scroll to the **Debug Mode** section
+3. Toggle on **Enable Debug Logging**
+4. Click **Save Configuration**
+5. Wait up to 30 seconds, then reproduce the issue
+
+### Viewing logs in the Admin UI
+
+1. Go to **Admin → Settings → Frisbii Pay Log**
+2. Select the relevant log file (e.g. `frisbii-api-YYYY-MM-DD.log` for API errors, `frisbii-webhook-YYYY-MM-DD.log` for webhook problems)
+3. Use **Previous** / **Next** to page through entries
+
+### Viewing logs directly on disk
+
+```bash
+# Log directory (default)
+ls var/log/frisbii/
+
+# Tail today's API log
+tail -f var/log/frisbii/frisbii-api-$(date +%Y-%m-%d).log
+
+# Search for errors
+grep '\[ERROR\]' var/log/frisbii/frisbii-api-$(date +%Y-%m-%d).log
+
+# Search for webhook events
+grep '\[INFO\]' var/log/frisbii/frisbii-webhook-$(date +%Y-%m-%d).log
+```
+
+If you set a custom `FRISBII_LOG_DIR`, replace `var/log/frisbii/` with that path.
+
+### Log sources and what they tell you
+
+| Log file | Helps diagnose |
+|----------|---------------|
+| `frisbii-api-*.log` | Failed Reepay API calls, wrong credentials, HTTP errors, response codes |
+| `frisbii-webhook-*.log` | Missed webhooks, signature failures, unrecognised event types |
+| `frisbii-checkout-*.log` | Payment session creation failures |
+| `frisbii-capture-*.log` | Capture, refund, or cancel operation failures |
+| `frisbii-order-status-*.log` | Order status update errors after payment events |
+
+### Disabling Debug Mode after investigation
+
+1. Go to **Admin → Settings → Frisbii Pay → Debug Mode**
+2. Toggle off **Enable Debug Logging**
+3. Click **Save Configuration**
+
+> Log files already written to disk are not deleted automatically when Debug Mode is turned off. Clean them up manually if needed.
 
 ### Q: What currencies are supported?
 

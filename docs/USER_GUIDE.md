@@ -292,10 +292,58 @@ Or contact us at support@yourstore.com
 **Problem**: Payment completed but order shows unpaid
 
 **Troubleshoot**:
-1. Check webhook logs (if available)
-2. Manually update order status
-3. Contact Reepay support
-4. Check database for transaction records
+1. Enable **Debug Mode** (Settings → Frisbii Pay → Debug Mode → Enable Debug Logging) to capture API request/response details
+2. Reproduce the issue, then go to **Settings → Frisbii Pay Log** to view the log files
+3. Check the `frisbii-webhook-YYYY-MM-DD.log` file to confirm whether the webhook was received and processed
+4. Manually update order status if needed
+5. Contact Reepay support with the request ID from the log
+
+---
+
+## Debug Mode & Log Viewer
+
+### What is Debug Mode?
+
+Debug Mode is a diagnostic feature that writes detailed API request/response data to log files on the server. Use it to troubleshoot payment failures, investigate webhook issues, or verify API integration behaviour.
+
+> **Heads-up**: Debug mode writes to disk. Disable it again after diagnosing your issue to avoid unnecessary disk usage.
+
+### Enabling Debug Mode
+
+1. Go to **Admin → Settings → Frisbii Pay**
+2. Scroll down to the **Debug Mode** section
+3. Turn on the **Enable Debug Logging** toggle
+4. Click **Save Configuration**
+5. Wait up to 30 seconds for the change to take effect (provider config cache TTL)
+
+### Viewing Logs
+
+1. In the Admin sidebar, go to **Settings → Frisbii Pay Log**
+2. The dashboard shows all log files with:
+   - **Source** — which part of the system wrote the file (e.g., `frisbii-api`, `frisbii-webhook`)
+   - **Date** — the date of the log (one file per source per day)
+   - **Size** — file size
+3. Click **View** on any row to open the log file
+4. Use **Previous** / **Next** to page through entries (100 lines per page)
+5. Log lines are colour-coded: ERROR (red), WARN (yellow), DEBUG (blue), INFO (grey)
+
+### Log Sources
+
+| Source file | What it contains |
+|-------------|-----------------|
+| `frisbii-api-YYYY-MM-DD.log` | Full HTTP request/response for every Reepay API call (only when Debug Mode is on) |
+| `frisbii-webhook-YYYY-MM-DD.log` | Incoming webhooks — always written, regardless of Debug Mode |
+| `frisbii-checkout-YYYY-MM-DD.log` | Payment session creation events — always written |
+| `frisbii-capture-YYYY-MM-DD.log` | Capture, refund, cancel events — always written |
+| `frisbii-order-status-YYYY-MM-DD.log` | Order status change events — always written |
+
+### Privacy & Security
+
+- Sensitive data (`api_key`, `webhook_secret`, `card_number`, `cvv`, etc.) is **automatically redacted** and never written to log files.
+- Log files are stored server-side only (`var/log/frisbii/` by default). They are never exposed as static files; all access goes through the authenticated Admin API.
+- Only authenticated admin users can view log files through the Admin UI.
+
+---
 
 ## Features
 

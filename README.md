@@ -15,6 +15,7 @@ Frisbii/Reepay payment provider for Medusa v2.
 - ✅ Multi-language Admin UI (locale follows saved config, not browser language)
 - ✅ Danish (`da_DK`) and English (`en_GB`) translations — more coming soon
 - ✅ **Send Order Lines** — forward itemised product + shipping lines to Reepay invoice (configurable per-store)
+- ✅ **Debug Mode** — file-based API request/response logging with daily rotation, Admin log viewer UI, and automatic redaction of secrets
 
 ## 📦 Installation
 
@@ -74,6 +75,10 @@ FRISBII_API_KEY_LIVE=priv_xxxxxxxxxxxxxxxx
 
 # API Mode (test or live)
 FRISBII_API_MODE=test
+
+# (Optional) Custom directory for debug log files
+# Default: {project_root}/var/log/frisbii
+# FRISBII_LOG_DIR=/var/log/frisbii
 ```
 
 ## 📖 Documentation
@@ -103,6 +108,9 @@ All settings are managed in **Admin → Settings → Frisbii Pay**. They are sto
 | Send Phone Number | Payment Processing | `false` | Include customer phone in Reepay customer record |
 | Auto Capture | Payment Processing | `false` | Automatically settle immediately after authorisation |
 | Save Card Enabled | Saved Cards | `false` | Allow customers to save cards for future purchases |
+| Auto-Cancel Enabled | Auto-Cancel | `false` | Automatically cancel unpaid orders after a timeout |
+| Auto-Cancel Timeout | Auto-Cancel | `30` | Minutes before an unpaid order is cancelled |
+| **Debug Mode** | **Debug Mode** | **`false`** | **When `true`, writes full API request/response to log files in `var/log/frisbii/`. View logs in Admin → Settings → Frisbii Pay Log.** |
 
 ## 🌐 Admin UI Language
 

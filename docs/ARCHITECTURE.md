@@ -30,6 +30,14 @@ The Frisbii Payment Plugin extends Medusa's payment processing system to integra
 │  │  - Configuration endpoints                     │ │
 │  │  - Payment status tracking                     │ │
 │  │  - Webhook receivers                           │ │
+│  │  - Log file viewer API                         │ │
+│  └────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────┐ │
+│  │   File-Based Logging (src/utils/logger.ts)     │ │
+│  │  - API request/response logs (debug mode)      │ │
+│  │  - Webhook / checkout / capture event logs     │ │
+│  │  - Sensitive field redaction                   │ │
+│  │  - Daily rotation, path-traversal protection   │ │
 │  └────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────┘
         │                           │
@@ -38,6 +46,13 @@ The Frisbii Payment Plugin extends Medusa's payment processing system to integra
   │   Database   │          │  Reepay API  │
   │  (4 Tables)  │          │  (REST API)  │
   └──────────────┘          └──────────────┘
+            │
+            ▼
+  ┌──────────────────────────────┐
+  │  Log Files on Disk           │
+  │  var/log/frisbii/*.log       │
+  │  (or FRISBII_LOG_DIR)        │
+  └──────────────────────────────┘
 ```
 
 ## Core Components
@@ -141,6 +156,7 @@ System configuration singleton.
 | enabled | Boolean | Enable/disable payments |
 | testMode | Boolean | Test vs production mode |
 | processingCurrency | String | Default currency |
+| debug_enabled | Boolean | Enable file-based API debug logging |
 
 #### frisbii_session
 Payment session tracking.
@@ -385,6 +401,81 @@ React component that provides a full configuration UI in the Admin sidebar under
 - Admin UI code is compiled by `medusa plugin:build` into `.medusa/server/src/admin/index.js` (CommonJS) and `index.mjs` (ESM)
 - The `"./admin"` export in `package.json` points to these compiled bundles
 - Medusa's build process (`npx medusa build`) discovers the plugin's admin UI via the `./admin` export, bundles it into the host app's admin client, and serves it from `/app/settings/frisbii`
+
+**Admin Log Viewer Pages (`src/admin/routes/settings/frisbii-logs/`)**:
+
+- **`page.tsx`** — Log Dashboard, registered as `defineRouteConfig({ label: "Frisbii Pay Log", icon: DocumentText })`. Lists all log files returned by `GET /admin/frisbii/logs`. When `debug_enabled = false`, shows a message directing the user to enable Debug Mode instead of a file table.
+- **`[filename]/page.tsx`** — Log Detail. Shows paginated log file content fetched from `GET /admin/frisbii/logs/:filename`. Lines are colour-coded by severity: ERROR (red), WARN (yellow), DEBUG (blue), INFO (unstyled).
+
+### 9. File-Based Logging (`src/utils/logger.ts`)
+
+**Purpose**: Provides a consistent, security-aware logging interface for all plugin components. Logs are written to disk for post-hoc diagnostics; they never block or affect the payment flow.
+
+**Key exports**:
+
+```typescript
+// Whitelist of allowed log sources
+const LOG_SOURCES = [
+  "frisbii-api",       // HTTP requests/responses to Reepay (gated by debug_enabled)
+  "frisbii-webhook",   // Incoming webhook events
+  "frisbii-checkout",  // Payment session creation
+  "frisbii-capture",   // Capture / refund / cancel events
+  "frisbii-order-status", // Order status subscriber events
+  "frisbii-card-save", // Saved card operations
+] as const
+
+type LogSource = typeof LOG_SOURCES[number]
+type LogLevel  = "DEBUG" | "INFO" | "WARN" | "ERROR"
+
+// General-purpose log entry
+function frisbiiLog(source: LogSource, level: LogLevel, message: string, data?: unknown): void
+
+// Structured API log entry (request + response)
+function frisbiiApiLog(params: {
+  source: LogSource; method: string; url: string; requestBody?: unknown;
+  responseBody?: unknown; statusCode: number; durationMs: number; error?: unknown;
+}): void
+
+// Resolve file path for a given source (includes path-traversal check)
+function resolveLogFilePath(source: LogSource): string
+```
+
+**Log file location**: `{cwd}/var/log/frisbii/frisbii-{source}-YYYY-MM-DD.log`  
+Override with the `FRISBII_LOG_DIR` environment variable.
+
+**Log entry format**:
+```
+[2025-01-15T10:30:00.000Z] [INFO] [frisbii-capture] Payment captured
+{"chargeId":"cart-123","amount":10000,"currency":"DKK"}
+---
+```
+
+**Security**:
+- Sensitive fields are redacted before writing: `api_key`, `api_key_test`, `api_key_live`, `webhook_secret`, `card_number`, `cvv`, `cvc`, `authorization`.
+- Filename must match `/^frisbii-[a-z-]+-\d{4}-\d{2}-\d{2}\.log$/` before the Admin API will read it.
+- Path confinement: the resolved absolute path must start with the log directory path — prevents path traversal attacks.
+- Logger uses try/catch internally and always fails silently so a logging error never propagates to the payment flow.
+
+**Visibility by debug_enabled**:
+
+| Source | Written when debug disabled | Written when debug enabled |
+|--------|-----------------------------|---------------------------|
+| `frisbii-api` | ❌ No | ✅ Yes |
+| `frisbii-webhook` | ✅ Always | ✅ Always |
+| `frisbii-checkout` | ✅ Always | ✅ Always |
+| `frisbii-capture` | ✅ Always | ✅ Always |
+| `frisbii-order-status` | ✅ Always | ✅ Always |
+
+**Admin API routes for log access**:
+
+| Route | Method | Auth | Purpose |
+|-------|--------|------|---------|
+| `/admin/frisbii/logs` | GET | Admin | List all log files with metadata |
+| `/admin/frisbii/logs/:filename` | GET | Admin | Read paginated log file content |
+
+Query params for log detail: `?page=1&limit=100` (max 500 lines per request).
+
+---
 
 ## Data Flow Examples
 

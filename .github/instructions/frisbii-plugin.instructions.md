@@ -53,6 +53,7 @@ src/
   utils/                       # Pure utility functions
     order-lines.ts             # Builds Reepay order_lines arrays from Medusa DB (cart + order tables)
     currency.ts                # toMinorUnits, ZERO_DECIMAL_CURRENCIES
+    logger.ts                  # File-based logging utility (frisbiiLog, frisbiiApiLog, resolveLogFilePath)
   admin/
     widgets/                   # React admin widgets (order detail page)
       frisbii-order-payment.tsx  # Invoice widget, zone: order.details.side.after
@@ -63,6 +64,10 @@ src/
       settings/
         frisbii/
           page.tsx             # Admin settings page (/settings/frisbii)
+        frisbii-logs/
+          page.tsx             # Log Dashboard page (/settings/frisbii-logs)
+          [filename]/
+            page.tsx           # Log Detail page (/settings/frisbii-logs/:filename)
 ```
 
 ---
@@ -228,6 +233,15 @@ The widget returns `null` (renders nothing) when no Frisbii payment data exists 
 - Fetches/saves config via `/admin/frisbii/config` API route.
 - Must be placed at `src/admin/routes/settings/<slug>/page.tsx` for Medusa to discover it.
 
+### Log Viewer Pages (`src/admin/routes/settings/frisbii-logs/`)
+
+Two pages provide the Debug Mode log UI:
+
+- **`page.tsx`** — Log Dashboard. Registered with `defineRouteConfig({ label: "Frisbii Pay Log", icon: DocumentText })`. Fetches log file list from `GET /admin/frisbii/logs`. When `debug_enabled = false`, shows a "debug disabled" message with a link to Settings instead of the file table. **Label is English-only and uses `defineRouteConfig` directly — it does not go through the `useAdminTranslation` hook.**
+- **`[filename]/page.tsx`** — Log Detail. Shows paginated content of a single log file (`GET /admin/frisbii/logs/:filename?page=1&limit=100`). Reads filename from `window.location.pathname`. Colour-codes lines by level: ERROR = red, WARN = yellow, DEBUG = blue, INFO = default. Uses `useAdminTranslation(locale)` for all visible strings except raw log line content.
+
+> **Icon note**: Use `DocumentText` from `@medusajs/icons`. `ReceiptText` does NOT exist in the installed version and causes a build error.
+
 ### Admin UI Internationalisation (i18n) Rules
 
 All user-visible strings in the Admin UI (settings page and widgets) are translated via the `useAdminTranslation()` hook from `src/admin/locale/index.ts`.
@@ -320,6 +334,103 @@ useAdminTranslation(overrideLocale?: string): { t: TranslationKeys; locale: "en"
 - The Settings page and every admin widget **must** pass `config?.locale` (or a fetched locale) as `overrideLocale`. Do not call the hook without an override unless there is no config context.
 - Do **not** apply `.toUpperCase()` to translated strings in JSX. Use CSS `uppercase` (via `className` or `style`) so the underlying string remains translatable.
 - Status labels in the Invoice widget are resolved via `t[\`status${PascalCase}\`]` — follow that pattern for any new status badge or chip.
+
+---
+
+## Debug Mode & File-Based Logging (`src/utils/logger.ts`)
+
+### Purpose
+
+`src/utils/logger.ts` is the single logging utility for the entire plugin. It writes structured log entries to daily-rotating files in `{cwd}/var/log/frisbii/` (override via `FRISBII_LOG_DIR` env var). It never throws — all file I/O errors are silently caught so a logging failure can never break a payment flow.
+
+### Exports
+
+```typescript
+// Allowed log source identifiers (whitelist — do not add sources outside this list)
+const LOG_SOURCES = [
+  "frisbii-api",          // Reepay HTTP request/response (gated by debug_enabled)
+  "frisbii-webhook",      // Incoming webhook events
+  "frisbii-checkout",     // Payment session creation
+  "frisbii-capture",      // Capture / refund / cancel events
+  "frisbii-order-status", // Order status subscriber events
+  "frisbii-card-save",    // Saved card operations
+] as const
+type LogSource = typeof LOG_SOURCES[number]
+type LogLevel  = "DEBUG" | "INFO" | "WARN" | "ERROR"
+
+// Write a general log entry
+frisbiiLog(source: LogSource, level: LogLevel, message: string, data?: unknown): void
+
+// Write a structured API log entry (request + response in one call)
+frisbiiApiLog(params: {
+  source: LogSource; method: string; url: string;
+  requestBody?: unknown; responseBody?: unknown;
+  statusCode: number; durationMs: number; error?: unknown;
+}): void
+
+// Resolve the absolute path for a source's today-dated log file
+resolveLogFilePath(source: LogSource): string
+```
+
+### Log file naming & location
+
+```
+{FRISBII_LOG_DIR ?? cwd()/var/log/frisbii}/frisbii-{source}-YYYY-MM-DD.log
+```
+
+Files rotate automatically by date (one file per source per calendar day). No size limit and no retention policy — disk management is the operator's responsibility.
+
+### Log entry format
+
+```
+[2025-01-15T10:30:00.000Z] [INFO] [frisbii-capture] Payment captured
+{"chargeId":"cart-123","amount":10000,"currency":"DKK"}
+---
+```
+
+### Visibility by `debug_enabled` setting
+
+| Source | Written when debug disabled | Written when debug enabled |
+|--------|-----------------------------|---------------------------|
+| `frisbii-api` | ❌ No | ✅ Yes |
+| `frisbii-webhook` | ✅ Always | ✅ Always |
+| `frisbii-checkout` | ✅ Always | ✅ Always |
+| `frisbii-capture` | ✅ Always | ✅ Always |
+| `frisbii-order-status` | ✅ Always | ✅ Always |
+
+The `debug_enabled` flag is read from `FrisbiiDbConfig` in `service.ts`. The `FrisbiiApiClient.setDebugEnabled(bool)` method gates whether `frisbiiApiLog()` is called inside the `request()` method. `FrisbiiCheckoutClient` extends `FrisbiiApiClient` and inherits `setDebugEnabled()` automatically.
+
+In `FrisbiiPaymentService.refreshApiKey()`, after loading fresh config, both clients must be updated:
+```typescript
+this.apiClient_.setDebugEnabled(config.debug_enabled ?? false)
+this.checkoutClient_.setDebugEnabled(config.debug_enabled ?? false)
+```
+
+### Security rules for logging
+
+- **Always redact** these fields before writing to any log: `api_key`, `api_key_test`, `api_key_live`, `webhook_secret`, `card_number`, `cvv`, `cvc`, `authorization`. The `logger.ts` utility handles this automatically via the `SENSITIVE_FIELDS` set.
+- Never pass raw config objects (with API keys) directly to `frisbiiLog()` data parameter.
+- Never log the full Reepay API key — not even a partial prefix.
+
+### Admin API routes for log access
+
+Both routes require `AuthenticatedMedusaRequest` (admin JWT). They live under `src/api/admin/frisbii/logs/`:
+
+| Route | File | Purpose |
+|-------|------|---------|
+| `GET /admin/frisbii/logs` | `logs/route.ts` | Returns array of log file metadata sorted by modified date desc |
+| `GET /admin/frisbii/logs/:filename` | `logs/[filename]/route.ts` | Returns paginated log content (`?page=1&limit=100`, max 500) |
+
+Security enforced in both routes:
+1. **Filename whitelist**: filename must match `/^frisbii-[a-z-]+-\d{4}-\d{2}-\d{2}\.log$/` exactly.
+2. **Path confinement**: resolved absolute path must start with `resolved(logDir) + path.sep` — prevents path traversal.
+
+### DB column (`frisbii_config.debug_enabled`)
+
+- Type: `boolean NOT NULL DEFAULT false`
+- Added in migration: `Migration20260428000000`
+- MikroORM model: `src/modules/frisbii-data/models/frisbii-config.ts` — field `debug_enabled: model.boolean().default(false)`
+- Zod validator: `src/api/admin/frisbii/config/validators.ts` — `debug_enabled: z.boolean().optional()`
 
 ---
 
@@ -426,6 +537,9 @@ This plugin handles **payment data and API secrets**. Security is non-negotiable
 - Do **not** mutate existing migration files — always create a new one.
 - Do **not** add new peerDependencies without updating both `peerDependencies` and `devDependencies` in `package.json`.
 - Do **not** put admin UI packages (`@medusajs/admin-sdk`, `@medusajs/ui`, `@medusajs/icons`, `react`) in `dependencies` — they must be `peerDependencies` only.
+- Do **not** import `ReceiptText` from `@medusajs/icons` — it does not exist. Use `DocumentText` instead.
+- Do **not** add new log sources to `LOG_SOURCES` without a corresponding discussion — the whitelist is intentionally narrow.
+- Do **not** write API keys or raw config objects to log files — always redact sensitive fields before calling `frisbiiLog()`.
 
 ---
 

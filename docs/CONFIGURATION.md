@@ -280,9 +280,75 @@ The plugin handles these Reepay webhook events:
 | `payment_failed` | `onPaymentFailed` | Update failure status |
 | `refund_created` | `onRefundCreated` | Track refund |
 
+## Auto-Cancel Unpaid Orders
+
+**Admin path**: Settings → Frisbii Pay → Auto-Cancel Unpaid Orders
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Enable Auto-Cancel | `false` | Automatically cancel orders that remain unpaid after the timeout |
+| Timeout (minutes) | `30` | How long to wait before cancelling |
+
+When enabled, a scheduled job (`frisbii-auto-cancel`) runs every minute and cancels any Frisbii payment sessions older than the configured timeout.
+
+---
+
+## Debug Mode
+
+**Admin path**: Settings → Frisbii Pay → Debug Mode
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Enable Debug Logging | `false` | Write detailed API request/response logs to disk |
+
+### What gets logged
+
+| Source | File | Controlled by Debug Mode? |
+|--------|------|---------------------------|
+| API requests & responses | `frisbii-api-YYYY-MM-DD.log` | **Yes** — only when enabled |
+| Payment session creation | `frisbii-checkout-YYYY-MM-DD.log` | No — always written |
+| Capture / refund / cancel | `frisbii-capture-YYYY-MM-DD.log` | No — always written |
+| Webhook events | `frisbii-webhook-YYYY-MM-DD.log` | No — always written |
+| Order status changes | `frisbii-order-status-YYYY-MM-DD.log` | No — always written |
+
+### Log file location
+
+Default: `{medusa_project_root}/var/log/frisbii/`  
+Override: set the `FRISBII_LOG_DIR` environment variable.
+
+### Security
+
+- Sensitive fields are automatically redacted before writing: `api_key`, `api_key_test`, `api_key_live`, `webhook_secret`, `card_number`, `cvv`, `cvc`, `authorization`.
+- Log files are never served directly; they are read server-side and returned through the authenticated Admin API only.
+
+### Viewing logs in the Admin UI
+
+1. Enable Debug Mode in **Settings → Frisbii Pay → Debug Mode**
+2. Navigate to **Settings → Frisbii Pay Log** in the sidebar
+3. The dashboard lists all log files with source, date, and file size
+4. Click **View** on any row to open the paginated line viewer
+
+> **Note**: Changes to `debug_enabled` take effect within 30 seconds (provider config cache TTL). If you need logs immediately, wait 30 seconds after saving.
+
+---
+
 ## Advanced Configuration
 
-### Custom Currency Support
+The plugin does not require any options in `medusa-config.js`. The following options are accepted as a fallback when no DB config has been saved yet:
+
+```javascript
+{
+  resolve: "@montaekung/medusa-plugin-frisbii-pay/providers/frisbii",
+  id: "frisbii-payment",
+  options: {
+    apiKeyTest: process.env.FRISBII_API_KEY_TEST, // fallback only
+    apiKeyLive: process.env.FRISBII_API_KEY_LIVE, // fallback only
+    apiMode: process.env.FRISBII_API_MODE || "test",
+  },
+}
+```
+
+All other settings (debug mode, send order lines, locale, etc.) are managed through the Admin UI and stored in the `frisbii_config` database table.
 
 The plugin handles currency amounts correctly, including zero-decimal currencies:
 
@@ -297,35 +363,25 @@ const zeroDecimalCurrencies = ['JPY', 'KRW', 'CLP', 'PYG', 'UGX', 'VND'];
 
 ### Session Timeout
 
-Sessions are automatically cleaned up after the timeout period:
+Sessions are automatically cleaned up by the auto-cancel job (see **Auto-Cancel Unpaid Orders** above).
 
-```bash
-# Default: 1800 seconds (30 minutes)
-# Adjust in configuration or environment:
-FRISBII_SESSION_TIMEOUT=3600  # 1 hour
-FRISBII_SESSION_TIMEOUT=900   # 15 minutes
-```
+### Advanced Configuration
 
-### Logging Configuration
-
-Enable debug logging to see detailed plugin operations:
+The plugin does not require any options in `medusa-config.js`. The following options are accepted as a fallback when no DB config has been saved yet:
 
 ```javascript
-// In medusa-config.js
 {
-  resolve: "@montaekung/medusa-plugin-frisbii-pay",
+  resolve: "@montaekung/medusa-plugin-frisbii-pay/providers/frisbii",
+  id: "frisbii-payment",
   options: {
-    debug: true,  // Logs all API calls and responses
-    // ... other options
+    apiKeyTest: process.env.FRISBII_API_KEY_TEST, // fallback only
+    apiKeyLive: process.env.FRISBII_API_KEY_LIVE, // fallback only
+    apiMode: process.env.FRISBII_API_MODE || "test",
   },
 }
 ```
 
-Log output will show:
-- API request/response details
-- Payment session creation
-- Webhook signature verification
-- Database operations
+All other settings (debug mode, send order lines, locale, etc.) are managed through the Admin UI and stored in the `frisbii_config` database table.
 
 ## Configuration Validation
 
@@ -353,6 +409,10 @@ REDIS_URL=redis://localhost:6379
 FRISBII_API_KEY_TEST=priv_test_xxxxxxxxxxxxxxxx
 FRISBII_API_KEY_LIVE=priv_xxxxxxxxxxxxxxxx
 FRISBII_API_MODE=test
+
+# (Optional) Custom directory for debug log files
+# Default: {project_root}/var/log/frisbii
+# FRISBII_LOG_DIR=/var/log/frisbii
 
 # Admin
 MEDUSA_ADMIN_ONBOARDING_TYPE=default

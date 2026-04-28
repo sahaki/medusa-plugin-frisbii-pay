@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Debug Mode setting** (`debug_enabled`, default: `false`): Controls detailed file-based logging of API requests and responses.
+  - When `true`: every HTTP request sent to the Reepay API (method, URL, request body, response body, HTTP status code, duration in ms) is written to `var/log/frisbii/frisbii-api-{YYYY-MM-DD}.log`. Sensitive fields (`api_key`, `webhook_secret`, `card_number`, `cvv`, etc.) are automatically redacted before writing.
+  - When `false`: API-level file logging is suppressed. All other log sources (webhook, checkout, capture, order-status) still write unconditionally so production issues remain diagnosable.
+  - The setting is configurable in **Admin → Settings → Frisbii Pay → Debug Mode → Enable Debug Logging**.
+  - A new **Frisbii Pay Log** menu entry appears in the Admin sidebar (under Settings). The page lists all log files with source, date, and size. Clicking a file opens a paginated line viewer with colour-coded log levels.
+  - Log directory: `{project_root}/var/log/frisbii/`. Override via the `FRISBII_LOG_DIR` environment variable.
+  - Log files rotate daily by date suffix: `frisbii-{source}-YYYY-MM-DD.log`.
+  - New utility: `src/utils/logger.ts` — exports `frisbiiLog()`, `frisbiiApiLog()`, `resolveLogFilePath()`, `LOG_SOURCES`, `LogSource`, `LogLevel`.
+  - New API routes: `GET /admin/frisbii/logs` (list files) and `GET /admin/frisbii/logs/:filename` (paginated content). Both require admin authentication and enforce path-traversal prevention via filename whitelisting and path confinement checks.
+  - New Admin UI pages: `src/admin/routes/settings/frisbii-logs/page.tsx` (Log Dashboard) and `src/admin/routes/settings/frisbii-logs/[filename]/page.tsx` (Log Detail).
+  - New DB column: `frisbii_config.debug_enabled boolean NOT NULL DEFAULT false` — migration `Migration20260428000000`.
 - **Send Order Lines setting** (`send_order_lines`, default: `true`): Controls whether itemised order line details are forwarded to Reepay when a payment session is created and when a payment is captured.
   - When `true`: the `order_lines` array is built from Medusa's cart/order tables and sent to Reepay. The Reepay invoice shows individual product rows, shipping, and discounts.
   - When `false`: only the total `amount` is sent. The Reepay invoice shows a single total figure with no line-item breakdown.

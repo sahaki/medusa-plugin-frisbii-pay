@@ -294,6 +294,78 @@ Generate a payment link for an order (manual payment collection).
 
 ---
 
+### Debug Log Viewer
+
+#### GET /admin/frisbii/logs
+
+List all Frisbii log files present on disk.
+
+**Authentication**: Required (Admin Token)
+
+**Response**:
+```typescript
+{
+  files: Array<{
+    name: string;        // e.g. "frisbii-api-2025-01-15.log"
+    source: string;      // e.g. "frisbii-api"
+    date: string;        // e.g. "2025-01-15"
+    size_bytes: number;
+    size_label: string;  // human-readable e.g. "12.4 KB"
+    created_at: string;  // ISO timestamp
+    modified_at: string; // ISO timestamp — list sorted by this, desc
+  }>;
+}
+```
+
+**Example**:
+```bash
+curl -X GET http://localhost:9000/admin/frisbii/logs \
+  -H "Authorization: Bearer eyJhbGc..."
+```
+
+---
+
+#### GET /admin/frisbii/logs/:filename
+
+Read the content of a specific log file with pagination.
+
+**Authentication**: Required (Admin Token)
+
+**Path parameter**:
+- `filename` — must match pattern `frisbii-[a-z-]+-YYYY-MM-DD.log` exactly. Any other value returns 400.
+
+**Query parameters**:
+| Parameter | Type | Default | Max | Description |
+|-----------|------|---------|-----|-------------|
+| `page` | integer | `1` | — | 1-based page number |
+| `limit` | integer | `100` | `500` | Lines per page |
+
+**Response**:
+```typescript
+{
+  filename: string;
+  content: string[];    // array of log lines for the requested page
+  lines: number;        // number of lines in this response
+  total_lines: number;  // total lines in the file
+  total_pages: number;
+  page: number;
+  limit: number;
+}
+```
+
+**Example**:
+```bash
+curl -X GET "http://localhost:9000/admin/frisbii/logs/frisbii-api-2025-01-15.log?page=1&limit=100" \
+  -H "Authorization: Bearer eyJhbGc..."
+```
+
+**Security notes**:
+- Filename is validated against a strict regex whitelist before the file is opened.
+- Resolved absolute path must be within the configured log directory (path-traversal prevention).
+- Files are read server-side only; they are never served as static assets.
+
+---
+
 ## Store API Endpoints
 
 ### Configuration
