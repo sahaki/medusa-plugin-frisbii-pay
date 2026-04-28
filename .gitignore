@@ -10,3 +10,4 @@ coverage/
 .idea/
 .playwright-mcp/
 debug/
+plans/

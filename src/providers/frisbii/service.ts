@@ -34,6 +34,13 @@ import {
   Logger,
 } from "@medusajs/types"
 import { FrisbiiApiClient, FrisbiiCheckoutClient } from "./clients"
+import {
+  buildCartOrderLines,
+  buildOrderOrderLines,
+  calculateTotalFromOrderLines,
+  getCartIdFromPaymentSessionId,
+  getOrderIdFromPaymentSessionId,
+} from "../../utils/order-lines"
 
 type Options = {
   apiKeyTest?: string
@@ -50,6 +57,8 @@ interface FrisbiiDbConfig {
   allowed_payment_methods: string[]
   auto_capture: boolean
   checkout_configuration: string | null
+  send_order_lines: boolean
+  send_phone_number: boolean
 }
 
 type InjectedDependencies = {
@@ -155,8 +164,8 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
       display_type: "overlay",
       allowed_payment_methods: [],
       auto_capture: false,
-      checkout_configuration: null,
-    }
+      checkout_configuration: null,      send_order_lines: true,
+      send_phone_number: false,    }
   }
 
   /**
@@ -190,12 +199,63 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
 
     const extra = ((input.data as any)?.extra || {}) as Record<string, unknown>
 
+    // ── Build order object: send order_lines or amount-only ────────────────
+    // When send_order_lines = true, look up cart items via payment_session_id
+    // and send itemised lines to Reepay. Fall back to amount-only on any error.
+    const orderData: Record<string, unknown> = {
+      handle: chargeHandle,
+      currency: input.currency_code.toUpperCase(),
+    }
+
+    const medusaSessionIdForCart = (input.data as Record<string, unknown>)?.session_id as string
+
+    if (config.send_order_lines && medusaSessionIdForCart && this.pgConnection_) {
+      try {
+        const cartId = await getCartIdFromPaymentSessionId(
+          this.pgConnection_,
+          medusaSessionIdForCart
+        )
+
+        if (cartId) {
+          const orderLines = await buildCartOrderLines(
+            this.pgConnection_,
+            cartId,
+            input.currency_code
+          )
+
+          if (orderLines.length > 0) {
+            // Validate sum matches expected total (allow 1-cent rounding tolerance)
+            const linesTotal = calculateTotalFromOrderLines(orderLines)
+            const expectedTotal = toMinorUnits(Number(input.amount), input.currency_code)
+
+            if (Math.abs(linesTotal - expectedTotal) <= 2) {
+              orderData.order_lines = orderLines
+              this.logger_.debug(
+                `Frisbii initiatePayment: built ${orderLines.length} order lines for cart ${cartId}`
+              )
+            } else {
+              this.logger_.warn(
+                `Frisbii initiatePayment: order lines total (${linesTotal}) ` +
+                `!= expected (${expectedTotal}) for cart ${cartId} — using amount-only`
+              )
+              orderData.amount = expectedTotal
+            }
+          } else {
+            orderData.amount = toMinorUnits(Number(input.amount), input.currency_code)
+          }
+        } else {
+          orderData.amount = toMinorUnits(Number(input.amount), input.currency_code)
+        }
+      } catch (err) {
+        this.logger_.warn(`Frisbii initiatePayment: failed to build order lines: ${err}`)
+        orderData.amount = toMinorUnits(Number(input.amount), input.currency_code)
+      }
+    } else {
+      orderData.amount = toMinorUnits(Number(input.amount), input.currency_code)
+    }
+
     const sessionPayload: Record<string, unknown> = {
-      order: {
-        handle: chargeHandle,
-        amount: toMinorUnits(Number(input.amount), input.currency_code),
-        currency: input.currency_code.toUpperCase(),
-      },
+      order: orderData,
       accept_url: extra.accept_url || undefined,
       cancel_url: extra.cancel_url || undefined,
     }
@@ -245,15 +305,28 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
       sessionPayload
     )
 
-    // Store the session mapping so webhooks can look up the Medusa payment session
+    // Store the session mapping so webhooks can look up the Medusa payment session.
+    // Also resolve and store the cart_id via the payment_collection chain so
+    // capturePayment() can look up order lines without re-querying the chain.
     const medusaSessionId = (input.data as Record<string, unknown>)?.session_id as string
     if (medusaSessionId) {
       try {
+        // Resolve cart_id from DB (more reliable than trusting extra.cart_id from storefront)
+        let resolvedCartId = (extra.cart_id as string) || ""
+        if (!resolvedCartId && this.pgConnection_) {
+          try {
+            const lookedUp = await getCartIdFromPaymentSessionId(this.pgConnection_, medusaSessionId)
+            if (lookedUp) resolvedCartId = lookedUp
+          } catch {
+            // non-fatal — cart_id lookup failure just means capture uses alt path
+          }
+        }
+
         await this.pgConnection_("frisbii_session").insert({
           id: `fses_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           session_handle: session.id,
           charge_handle: chargeHandle,
-          cart_id: (extra.cart_id as string) || "",
+          cart_id: resolvedCartId,
           payment_session_id: medusaSessionId,
           created_at: new Date(),
           updated_at: new Date(),
@@ -353,11 +426,61 @@ class FrisbiiPaymentProviderService extends AbstractPaymentProvider<Options> {
     input: CapturePaymentInput
   ): Promise<CapturePaymentOutput> {
     await this.refreshApiKey()
+    const config = await this.getConfig()
 
     const chargeHandle = (input.data as Record<string, unknown>)?.charge_handle as string
+    const currencyCode = (input.data as Record<string, unknown>)?.currency_code as string || "EUR"
+
+    // ── Build settle body: order_lines or empty (settle full authorized amount) ──
+    // When send_order_lines = true, look up order via payment_session_id and
+    // send itemised lines. Fall back to empty body on any error (Reepay will
+    // settle the full authorized amount when no amount/order_lines are provided).
+    let settleBody: Record<string, unknown> = {}
+
+    if (config.send_order_lines && this.pgConnection_) {
+      try {
+        // Look up payment_session_id from frisbii_session using charge_handle
+        const sessionRow = await this.pgConnection_
+          .select("payment_session_id")
+          .from("frisbii_session")
+          .where("charge_handle", chargeHandle)
+          .whereNull("deleted_at")
+          .first()
+
+        const paymentSessionId = sessionRow?.payment_session_id
+
+        if (paymentSessionId) {
+          const orderId = await getOrderIdFromPaymentSessionId(
+            this.pgConnection_,
+            paymentSessionId
+          )
+
+          if (orderId) {
+            const orderLines = await buildOrderOrderLines(
+              this.pgConnection_,
+              orderId,
+              currencyCode
+            )
+
+            if (orderLines.length > 0) {
+              settleBody = { order_lines: orderLines }
+              this.logger_.debug(
+                `Frisbii capturePayment: built ${orderLines.length} order lines for order ${orderId}`
+              )
+            }
+          }
+        }
+      } catch (err) {
+        this.logger_.warn(
+          `Frisbii capturePayment: failed to build settle order lines, ` +
+          `settling full authorized amount: ${err}`
+        )
+      }
+    }
+
     const result = await this.apiClient_.post<{ state: string }>(
       `charge/${chargeHandle}/settle`,
-      {}
+      settleBody
     )
 
     return {
