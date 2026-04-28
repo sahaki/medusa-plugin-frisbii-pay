@@ -11,3 +11,4 @@ coverage/
 .playwright-mcp/
 debug/
 plans/
+flows/

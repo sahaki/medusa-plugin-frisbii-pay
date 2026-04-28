@@ -334,11 +334,15 @@ export async function buildOrderOrderLines(
 ): Promise<ReepayOrderLine[]> {
   try {
     // ── 1. Fetch order items (latest version) ──────────────────────────────
+    // NOTE: unit_price comes from order_line_item (oli), NOT order_item (oi).
+    // order_item.unit_price is nullable (used only for price-override scenarios)
+    // and is NULL for normal orders. order_line_item.unit_price holds the
+    // actual price snapshot taken at order creation time.
     const itemsResult = await pgConnection.raw(`
       SELECT
         oi.item_id,
         oi.quantity,
-        oi.unit_price,
+        oli.unit_price,
         oli.title,
         oli.is_tax_inclusive
       FROM order_item oi
@@ -347,11 +351,11 @@ export async function buildOrderOrderLines(
         AND oi.deleted_at IS NULL
         AND oli.deleted_at IS NULL
         AND oi.version = (
-          SELECT MAX(version)
-          FROM order_item
-          WHERE order_id = ? AND deleted_at IS NULL
+          SELECT MAX(oi2.version)
+          FROM order_item oi2
+          WHERE oi2.item_id = oi.item_id AND oi2.deleted_at IS NULL
         )
-    `, [orderId, orderId])
+    `, [orderId])
 
     const items: OrderItemRow[] = itemsResult?.rows ?? itemsResult
     if (!items || items.length === 0) return []
